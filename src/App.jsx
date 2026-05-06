@@ -999,6 +999,10 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
+// Esto hace que la pantalla suba al inicio cada vez que cambias de sección
+useEffect(() => {
+  window.scrollTo(0, 0);
+}, [screen]);
 
   useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
 
