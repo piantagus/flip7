@@ -495,7 +495,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <button onClick={() => setModal('options')} style={{
           background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
           padding: '12px 18px', cursor: 'pointer', boxShadow: shadowSm(),
-          fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', color: C.navy,
+          fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px', color: C.navy,
           display: 'flex', alignItems: 'center', gap: 5
         }}><Settings size={15} strokeWidth={2.5} /> OPCIONES</button>
       </div>
@@ -505,13 +505,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => { setTab(t.id); window.scrollTo(0,0); }} style={{
-              flex: 1, padding: '11px 8px',
+              flex: 1, padding: '14px 10px',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.cream,
               border: `4px solid ${C.navy}`,
               borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
-              fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px',
+              fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px',
               cursor: 'pointer',
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
