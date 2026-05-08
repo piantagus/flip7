@@ -46,6 +46,7 @@ const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
 
 // ═══════ STORAGE ═══════
+
 function emptyPlayerStats(name) {
   return { name, gamesPlayed: 0, wins: 0, totalPoints: 0, highestRound: 0, bestGameScore: 0, roundsPlayed: 0 };
 }
@@ -94,14 +95,10 @@ function mergeStatsWithSavedNames(statsByName, names) {
 async function loadData() {
   try {
     let gamesRows = [];
-    const gamesByDate = await supabase.from('games').select('*').order('date', { ascending: false });
-    if (gamesByDate.error) {
-      const gamesByCreated = await supabase.from('games').select('*').order('created_at', { ascending: false });
-      if (gamesByCreated.error) throw gamesByCreated.error;
-      gamesRows = gamesByCreated.data ?? [];
-    } else {
-      gamesRows = gamesByDate.data ?? [];
-    }
+    const { data: gamesData, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    gamesRows = gamesData ?? [];
 
     const games = sortGamesNewestFirst(gamesRows.map(normalizeGameRow));
     const stats = recalculateStats(games);
@@ -133,18 +130,24 @@ async function removePlayerName(name) {
 }
 
 async function insertGame(game) {
-  const { data: inserted, error } = await supabase.from('games').insert(toGameInsertRow(game)).select().single();
-  if (error) {
-    console.error('No se pudo guardar partida en Supabase:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-      raw: error
-    });
+  try {
+    const { data: inserted, error } = await supabase
+      .from('games')
+      .insert([toGameInsertRow(game)])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error de Supabase:', error);
+      alert('Error técnico de la nube: ' + error.message + '\nDetalle: ' + (error.details || 'ninguno'));
+      return null;
+    }
+    return normalizeGameRow(inserted);
+  } catch (err) {
+    console.error('Error inesperado:', err);
+    alert('Error inesperado: ' + err.message);
     return null;
   }
-  return normalizeGameRow(inserted);
 }
 
 async function removeGame(id) {
@@ -158,8 +161,8 @@ function updatePlayerStats(players, game) {
   for (const name of game.players) {
     if (!out[name]) out[name] = emptyPlayerStats(name);
     const p = { ...out[name] }; p.gamesPlayed++; if (game.winner === name) p.wins++;
-    p.totalPoints += game.finalScores[name];
-    if (game.finalScores[name] > p.bestGameScore) p.bestGameScore = game.finalScores[name];
+    p.totalPoints += (game.finalScores[name] || 0);
+    if ((game.finalScores[name] || 0) > p.bestGameScore) p.bestGameScore = game.finalScores[name];
     for (const round of game.rounds) { const r = round.scores[name] ?? 0; p.roundsPlayed++; if (r > p.highestRound) p.highestRound = r; }
     out[name] = p;
   }
@@ -568,7 +571,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') {
-      window.alert('Hay puntajes inválidos en la ronda. Revisá los valores e intentá de nuevo.');
       return;
     }
     if (result?.status === 'tie') {
@@ -851,7 +853,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               {game.rounds.map((r, idx) => (
                 <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{
                   width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
-                  padding: '10px 12px', cursor: 'pointer', textAlign: 'left', display: 'center', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
                   boxShadow: '2px 2px 0 #00000010'
                 }}>
                   <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, color: C.navy, flexShrink: 0 }}>{String(idx + 1).padStart(2, '0')}</div>
@@ -1252,30 +1254,61 @@ export default function App() {
     setScores(Object.fromEntries(selected.map(p => [p, '']))); setTargetPickerOpen(false); setScreen('game');
   };
   const closeRound = async () => {
-    const rs = {}; for (const p of game.players) { const n = parseInt(scores[p], 10); if (isNaN(n) || n < 0) return { status: 'invalid' }; rs[p] = n; }
-    const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
-    const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
+    const rs = {}; 
+    for (const p of game.players) { 
+      const n = parseInt(scores[p], 10); 
+      if (isNaN(n) || n < 0) return { status: 'invalid' }; 
+      rs[p] = n; 
+    }
+    
+    const nt = { ...game.totals }; 
+    for (const p of game.players) nt[p] += rs[p];
+    
+    const nr = [...game.rounds, { scores: rs }]; 
+    const t = game.targetScore;
+    
+    // Verificamos si alguien llegó al objetivo
     if (game.players.some(p => nt[p] >= t)) {
       const topScore = Math.max(...game.players.map(p => nt[p]));
-      const leaders = game.players.filter(p => nt[p] === topScore && nt[p] >= t);
+      const leaders = game.players.filter(p => nt[p] === topScore);
+      
+      // Si hay empate en el primer puesto (puestos compartidos)
       if (leaders.length > 1) {
         setGame({ ...game, rounds: nr, totals: nt });
         setScores(Object.fromEntries(game.players.map(p => [p, ''])));
         return { status: 'tie' };
       }
-      const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: leaders[0] };
+      
+      // Ganador único absoluto
+      const fin = { 
+        id: `g-${Date.now()}`, 
+        date: new Date().toISOString(), 
+        players: game.players, 
+        rounds: nr, 
+        finalScores: nt, 
+        targetScore: t, 
+        winner: leaders[0] 
+      };
+      
       const savedGame = await insertGame(fin);
       if (!savedGame) {
-        window.alert('No se pudo guardar la partida en la nube. Intentá nuevamente.');
+        // El alert técnico ya saltó dentro de insertGame
         return { status: 'save_error' };
       }
+      
       const nd = { players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] };
-      setData(nd); setCompletedGame(savedGame); setGame(null); setScreen('gameover');
+      setData(nd); 
+      setCompletedGame(savedGame); 
+      setGame(null); 
+      setScreen('gameover');
       return { status: 'finished' };
     }
-    setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, ''])));
+    
+    setGame({ ...game, rounds: nr, totals: nt }); 
+    setScores(Object.fromEntries(game.players.map(p => [p, ''])));
     return { status: 'continued' };
   };
+
   const goHome = () => { setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); };
   const deleteGame = async (id) => {
     await removeGame(id);
