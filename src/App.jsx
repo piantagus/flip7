@@ -1134,7 +1134,9 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
                 <button key={v} onClick={() => startGame(v)} style={{
-                  position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy,
+                  position: 'relative', 
+                  background: v === target ? C.navy : C.yellow,
+                  color: v === target ? C.yellow : C.navy,
                   border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer',
                   boxShadow: shadow(C.navyDark), fontFamily: F.display,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
