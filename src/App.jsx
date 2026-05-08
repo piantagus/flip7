@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 const STORAGE_KEY = 'flip7-data-v1';
 
@@ -310,6 +311,12 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     const match = existing.find(p => p.toLowerCase() === t.toLowerCase());
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
+    
+    // Setup UX Nuevo - Scroll + Teclado
+    window.scrollTo(0, 0);
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   };
   const remove = (p) => setSelected(selected.filter(x => x !== p));
   const add = (p) => { setSelected([...selected, p]); setName(''); };
@@ -459,8 +466,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         </div>
         <button onClick={() => setModal('options')} style={{
           background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
-          padding: '10px 14px', cursor: 'pointer', boxShadow: shadowSm(),
-          fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px', color: C.navy,
+          padding: '12px 18px', cursor: 'pointer', boxShadow: shadowSm(),
+          fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', color: C.navy,
           display: 'flex', alignItems: 'center', gap: 5
         }}><Settings size={15} strokeWidth={2.5} /> OPCIONES</button>
       </div>
@@ -509,8 +516,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.red, color: C.white, fontFamily: F.display, fontSize: 9,
-                    padding: '3px 8px', borderRadius: 999, letterSpacing: '1px',
+                    background: C.red, color: C.white, fontFamily: F.display, fontSize: 12,
+                    padding: '5px 12px', borderRadius: 999, letterSpacing: '1px',
                     border: `2px solid ${C.navyDark}`
                   }}>FALTAN {remaining}</div>
                 </div>
@@ -849,6 +856,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
 function GameOverScreen({ game, onHome }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
+
+  // (El "cerebro" del confetti):
+  useEffect(() => {
+    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+    const t = setTimeout(() => {
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+    }, 250);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <PageBg>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
