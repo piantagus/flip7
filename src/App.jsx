@@ -312,13 +312,15 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
     
-    // Fix Teclado + Scroll (Mejorado)
+    // Forzamos el scroll al pixel 0 absoluto y quitamos el teclado
     setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
-    }, 50);
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0; // Para navegadores viejos
+      document.documentElement.scrollTop = 0; // Para navegadores modernos
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }, 100);
   };
   const remove = (p) => setSelected(selected.filter(x => x !== p));
   const add = (p) => { setSelected([...selected, p]); setName(''); };
@@ -579,31 +581,37 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </>)}
 
       {tab === 'resultados' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ranked.map((p, i) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
             return (
-              <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 6px', borderBottom: i < ranked.length - 1 ? `2px dashed ${C.navy}15` : 'none' }}>
+              <div key={p} style={{ 
+                display: 'flex', alignItems: 'center', gap: 12, padding: '16px 10px', 
+                background: C.creamLight, borderRadius: 14, borderBottom: `3px solid ${C.navy}10` 
+              }}>
                 <RankBadge rank={i + 1} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {i === 0 && total > 0 && <Crown size={13} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {i === 0 && total > 0 && <Crown size={16} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    {/* Nombre: +20% (de 14 a 17) */}
+                    <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span>
                   </div>
-                  <div style={{ height: 5, background: C.creamDark, borderRadius: 999, marginTop: 4, border: `1px solid ${C.navy}30`, overflow: 'hidden' }}>
+                  <div style={{ height: 7, background: C.creamDark, borderRadius: 999, marginTop: 6, border: `1px solid ${C.navy}30`, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: C.yellow, borderRadius: 999, transition: 'width 0.4s' }} />
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: F.display, fontSize: 22, color: C.navy }}>{total}</div>
-                  <div style={{ fontFamily: F.display, fontSize: 8, color: C.red, letterSpacing: '1px' }}>FALTAN {remaining}</div>
+                  {/* Puntaje: +20% (de 22 a 27) */}
+                  <div style={{ fontFamily: F.display, fontSize: 27, color: C.navy, lineHeight: 1 }}>{total}</div>
+                  {/* Faltan: +50% (de 8 a 12) y en negrita */}
+                  <div style={{ fontFamily: F.display, fontSize: 12, color: C.red, letterSpacing: '1px', fontWeight: 'bold', marginTop: 4 }}>FALTAN {remaining}</div>
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 18 }}>
           <Btn onClick={() => { setTab('anotar'); window.scrollTo(0,0); }} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
         </div>
       </>)}
@@ -1066,10 +1074,18 @@ export default function App() {
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
 
-  // Scroll automático en cambio de pantalla
-  useEffect(() => {
+// Scroll automático total en cada cambio de pantalla
+useEffect(() => {
+  const scrollToTop = () => {
     window.scrollTo(0, 0);
-  }, [screen]);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  };
+  scrollToTop();
+  // Lo repetimos un poquito después por si el teclado estaba bajando
+  const t = setTimeout(scrollToTop, 150);
+  return () => clearTimeout(t);
+}, [screen]);
 
   useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
 
