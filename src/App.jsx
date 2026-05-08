@@ -312,7 +312,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
     
-    // Forzamos el scroll al pixel 0 absoluto y quitamos el teclado
     setTimeout(() => {
       window.scrollTo(0, 0);
       document.body.scrollTop = 0; 
@@ -687,7 +686,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               {game.rounds.map((r, idx) => (
                 <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{
                   width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
-                  padding: '10px 12px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', cursor: 'pointer', textAlign: 'left', display: 'center', alignItems: 'center', gap: 10,
                   boxShadow: '2px 2px 0 #00000010'
                 }}>
                   <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, color: C.navy, flexShrink: 0 }}>{String(idx + 1).padStart(2, '0')}</div>
@@ -1083,8 +1082,8 @@ export default function App() {
   useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
 
   const openTargetPicker = () => { if (selected.length < 2) return; setTargetPickerOpen(true); };
-  const startGame = (target) => {
-    setGame({ players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: target });
+  const startGame = (targetVal) => {
+    setGame({ players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal });
     setScores(Object.fromEntries(selected.map(p => [p, '']))); setTargetPickerOpen(false); setScreen('game');
   };
   const closeRound = async () => {
@@ -1135,8 +1134,8 @@ export default function App() {
               {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
                 <button key={v} onClick={() => startGame(v)} style={{
                   position: 'relative', 
-                  background: v === target ? C.navy : C.yellow,
-                  color: v === target ? C.yellow : C.navy,
+                  background: C.yellow,
+                  color: C.navy,
                   border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer',
                   boxShadow: shadow(C.navyDark), fontFamily: F.display,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
