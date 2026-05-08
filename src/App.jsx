@@ -315,8 +315,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     // Forzamos el scroll al pixel 0 absoluto y quitamos el teclado
     setTimeout(() => {
       window.scrollTo(0, 0);
-      document.body.scrollTop = 0; // Para navegadores viejos
-      document.documentElement.scrollTop = 0; // Para navegadores modernos
+      document.body.scrollTop = 0; 
+      document.documentElement.scrollTop = 0; 
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
@@ -442,29 +442,30 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       return;
     }
 
-    // Lógica 85% Flippeador Ganador
     const projectedTotals = {};
     for (const p of game.players) {
         const roundScore = parseInt(scores[p], 10) || 0;
         projectedTotals[p] = (game.totals[p] || 0) + roundScore;
     }
+
+    const someOneWon = game.players.some(p => projectedTotals[p] >= target);
     const threshold = target * 0.85;
     const closeToWin = game.players.filter(p => projectedTotals[p] >= threshold);
 
-    if (closeToWin.length > 0) {
-        if (closeToWin.length > 1) {
-            setFlippeadorAlert({ type: 'multiple' });
-        } else {
-            const name = closeToWin[0];
-            const rem = Math.max(0, target - projectedTotals[name]);
-            setFlippeadorAlert({ type: 'single', name, remaining: rem });
-        }
-        setModal('flippeadorAlert');
+    if (closeToWin.length > 0 && !someOneWon) {
+      if (closeToWin.length > 1) {
+        setFlippeadorAlert({ type: 'multiple' });
+      } else {
+        const name = closeToWin[0];
+        const rem = Math.max(0, target - projectedTotals[name]);
+        setFlippeadorAlert({ type: 'single', name, remaining: rem });
+      }
+      setModal('flippeadorAlert');
     } else {
-        setScoreWarningConfirmed(false);
-        onCloseRound();
-        setTab('resultados');
-        window.scrollTo(0,0);
+      setScoreWarningConfirmed(false);
+      onCloseRound();
+      setTab('resultados');
+      window.scrollTo(0,0);
     }
   };
 
@@ -541,16 +542,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {isLeader && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</span>
+                    <span style={{ fontFamily: F.display, fontSize: 15, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.red, color: C.white, fontFamily: F.display, fontSize: 12,
-                    padding: '5px 12px', borderRadius: 999, letterSpacing: '1px',
-                    border: `2px solid ${C.navyDark}`
+                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 9,
+                    padding: '3px 8px', borderRadius: 999, letterSpacing: '0.5px',
+                    border: `1.5px solid ${C.navy}`, fontWeight: 'bold'
                   }}>FALTAN {remaining}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 36, color: C.navy, textShadow: `2px 2px 0 ${C.yellowDark}40` }}>{total}</span>
+                  <span style={{ fontFamily: F.display, fontSize: 35, color: C.navy, textShadow: `2px 2px 0 ${C.yellowDark}40` }}>{total}</span>
                   <span style={{ fontFamily: F.body, fontSize: 12, color: C.inkSoft }}>/ {target}</span>
                 </div>
                 <div style={{ height: 10, background: C.creamDark, borderRadius: 999, border: `2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 10 }}>
@@ -594,17 +595,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {i === 0 && total > 0 && <Crown size={16} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    {/* Nombre: +20% (de 14 a 17) */}
-                    <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span>
+                    <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{ height: 7, background: C.creamDark, borderRadius: 999, marginTop: 6, border: `1px solid ${C.navy}30`, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: C.yellow, borderRadius: 999, transition: 'width 0.4s' }} />
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  {/* Puntaje: +20% (de 22 a 27) */}
-                  <div style={{ fontFamily: F.display, fontSize: 27, color: C.navy, lineHeight: 1 }}>{total}</div>
-                  {/* Faltan: +50% (de 8 a 12) y en negrita */}
+                  <div style={{ fontFamily: F.display, fontSize: 26, color: C.navy, lineHeight: 1 }}>{total}</div>
                   <div style={{ fontFamily: F.display, fontSize: 12, color: C.red, letterSpacing: '1px', fontWeight: 'bold', marginTop: 4 }}>FALTAN {remaining}</div>
                 </div>
               </div>
@@ -617,8 +615,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </>)}
       </div>
 
-      {/* ═══ MODALS ═══ */}
-
       {modal === 'flippeadorAlert' && flippeadorAlert && (
           <Overlay>
             <Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
@@ -627,7 +623,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </div>
               <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
                 {flippeadorAlert.type === 'single'
-                  ? `¡${flippeadorAlert.name} está a solo ${flippeadorAlert.remaining} puntos de ganar! No te olvides de registrar al Flippeador Ganador.`
+                  ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! No te olvides de registrar al Flippeador Ganador.</>
                   : '¡Hay varios jugadores cerca de ganar! ¡Atención al Flippeador Ganador!'}
               </div>
               <Btn onClick={() => { 
@@ -914,7 +910,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 function GameOverScreen({ game, onHome }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
 
-  // (El "cerebro" del confetti):
   useEffect(() => {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
     const t = setTimeout(() => {
@@ -1074,18 +1069,16 @@ export default function App() {
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
 
-// Scroll automático total en cada cambio de pantalla
-useEffect(() => {
-  const scrollToTop = () => {
-    window.scrollTo(0, 0);
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-  };
-  scrollToTop();
-  // Lo repetimos un poquito después por si el teclado estaba bajando
-  const t = setTimeout(scrollToTop, 150);
-  return () => clearTimeout(t);
-}, [screen]);
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+    };
+    scrollToTop();
+    const t = setTimeout(scrollToTop, 150);
+    return () => clearTimeout(t);
+  }, [screen]);
 
   useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
 
@@ -1141,7 +1134,7 @@ useEffect(() => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
                 <button key={v} onClick={() => startGame(v)} style={{
-                  position: 'relative', background: C.yellow, color: C.navy,
+                  position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy,
                   border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer',
                   boxShadow: shadow(C.navyDark), fontFamily: F.display,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
