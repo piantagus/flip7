@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { createClient } from '@supabase/supabase-js';
 
-const STORAGE_KEY = 'flip7-data-v1';
+const SUPABASE_URL = 'https://bztyusclkfsydrrbpdey.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6dHl1c2Nsa2ZzeWRycmJwZGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk1NjEsImV4cCI6MjA5MzUxNTU2MX0.on73TbG44Xqsu6D6FEtgUaILhKikdZlCO9kExqHBl8g';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ═══════════════════════════════════════════════
 //  DESIGN SYSTEM — Flip 7 Retro Board Game
@@ -43,24 +46,111 @@ const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
 
 // ═══════ STORAGE ═══════
+function emptyPlayerStats(name) {
+  return { name, gamesPlayed: 0, wins: 0, totalPoints: 0, highestRound: 0, bestGameScore: 0, roundsPlayed: 0 };
+}
+
+function normalizeGameRow(row) {
+  return {
+    id: row.id,
+    date: row.date ?? row.created_at ?? null,
+    players: row.players ?? [],
+    rounds: row.rounds ?? [],
+    finalScores: row.final_scores ?? {},
+    targetScore: row.target_score ?? 200,
+    winner: row.winner ?? ''
+  };
+}
+
+function sortGamesNewestFirst(games) {
+  return [...games].sort((a, b) => {
+    const aTs = a.date ? Date.parse(a.date) : Number.NEGATIVE_INFINITY;
+    const bTs = b.date ? Date.parse(b.date) : Number.NEGATIVE_INFINITY;
+    const safeATs = Number.isFinite(aTs) ? aTs : Number.NEGATIVE_INFINITY;
+    const safeBTs = Number.isFinite(bTs) ? bTs : Number.NEGATIVE_INFINITY;
+    return safeBTs - safeATs;
+  });
+}
+
+function toGameInsertRow(game) {
+  return {
+    players: game.players,
+    rounds: game.rounds,
+    final_scores: game.finalScores,
+    winner: game.winner,
+    target_score: game.targetScore,
+    date: game.date
+  };
+}
+
+function mergeStatsWithSavedNames(statsByName, names) {
+  const merged = { ...statsByName };
+  for (const name of names) {
+    if (!merged[name]) merged[name] = emptyPlayerStats(name);
+  }
+  return merged;
+}
+
 async function loadData() {
-  try { 
-    const r = localStorage.getItem(STORAGE_KEY); 
-    if (r) return JSON.parse(r); 
-  } catch {}
+  try {
+    let gamesRows = [];
+    const gamesByDate = await supabase.from('games').select('*').order('date', { ascending: false });
+    if (gamesByDate.error) {
+      const gamesByCreated = await supabase.from('games').select('*').order('created_at', { ascending: false });
+      if (gamesByCreated.error) throw gamesByCreated.error;
+      gamesRows = gamesByCreated.data ?? [];
+    } else {
+      gamesRows = gamesByDate.data ?? [];
+    }
+
+    const games = sortGamesNewestFirst(gamesRows.map(normalizeGameRow));
+    const stats = recalculateStats(games);
+    const savedNames = await loadSavedPlayerNames();
+    return { players: mergeStatsWithSavedNames(stats, savedNames), games };
+  } catch (e) {
+    console.error('No se pudo cargar datos desde Supabase:', e);
+  }
   return { players: {}, games: [] };
 }
 
-async function saveData(data) {
-  try { 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); 
-  } catch {}
+async function loadSavedPlayerNames() {
+  const { data: playerRows, error } = await supabase.from('players').select('name');
+  if (error) throw error;
+  return (playerRows ?? []).map(p => p.name).filter(Boolean);
+}
+
+async function savePlayerName(name) {
+  const trimmed = name?.trim();
+  if (!trimmed) return;
+  const { error } = await supabase.from('players').upsert({ name: trimmed }, { onConflict: 'name' });
+  if (error) console.error('No se pudo guardar jugador en Supabase:', error);
+}
+
+async function removePlayerName(name) {
+  if (!name) return;
+  const { error } = await supabase.from('players').delete().eq('name', name);
+  if (error) console.error('No se pudo borrar jugador en Supabase:', error);
+}
+
+async function insertGame(game) {
+  const { data: inserted, error } = await supabase.from('games').insert(toGameInsertRow(game)).select().single();
+  if (error) {
+    console.error('No se pudo guardar partida en Supabase:', error);
+    return null;
+  }
+  return normalizeGameRow(inserted);
+}
+
+async function removeGame(id) {
+  if (!id) return;
+  const { error } = await supabase.from('games').delete().eq('id', id);
+  if (error) console.error('No se pudo borrar partida en Supabase:', error);
 }
 
 function updatePlayerStats(players, game) {
   const out = { ...players };
   for (const name of game.players) {
-    if (!out[name]) out[name] = { name, gamesPlayed: 0, wins: 0, totalPoints: 0, highestRound: 0, bestGameScore: 0, roundsPlayed: 0 };
+    if (!out[name]) out[name] = emptyPlayerStats(name);
     const p = { ...out[name] }; p.gamesPlayed++; if (game.winner === name) p.wins++;
     p.totalPoints += game.finalScores[name];
     if (game.finalScores[name] > p.bestGameScore) p.bestGameScore = game.finalScores[name];
@@ -71,6 +161,7 @@ function updatePlayerStats(players, game) {
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
 function fmtDate(iso) {
+  if (!iso) return '';
   try { const d = new Date(iso); return `${d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`; } catch { return ''; }
 }
 
@@ -298,11 +389,12 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
   );
 }
 
-function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
+function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer }) {
   const [name, setName] = useState('');
+  const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const existing = Object.keys(data.players).sort();
   const available = existing.filter(p => !selected.includes(p));
-  const lastGame = data.games.length > 0 ? data.games[data.games.length - 1] : null;
+  const lastGame = data.games.length > 0 ? data.games[0] : null;
   const q = name.trim().toLowerCase();
   const suggestions = q ? available.filter(p => p.toLowerCase().includes(q)).slice(0, 5) : [];
 
@@ -311,6 +403,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     const match = existing.find(p => p.toLowerCase() === t.toLowerCase());
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
+    if (!match) onSavePlayer(fn);
     
     setTimeout(() => {
       window.scrollTo(0, 0);
@@ -368,11 +461,33 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
           <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>GUARDADOS</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {available.map(p => (
-              <button key={p} onClick={() => add(p)} style={{
-                background: C.cream, color: C.navy, border: `3px solid ${C.navy}`, borderRadius: 999,
-                padding: '6px 14px', fontFamily: F.body, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '2px 2px 0 #00000015'
-              }}><Plus size={13} strokeWidth={3} /> {p}</button>
+              <div key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => add(p)} style={{
+                  background: C.cream, color: C.navy, border: `3px solid ${C.navy}`, borderRadius: 999,
+                  padding: '6px 14px', fontFamily: F.body, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '2px 2px 0 #00000015'
+                }}><Plus size={13} strokeWidth={3} /> {p}</button>
+                <button
+                  onClick={() => setConfirmDeleteSaved(p)}
+                  title={`Borrar ${p}`}
+                  aria-label={`Borrar ${p}`}
+                  style={{
+                    background: `${C.red}20`,
+                    color: C.red,
+                    border: `3px solid ${C.red}`,
+                    borderRadius: 999,
+                    width: 34,
+                    height: 34,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '2px 2px 0 #00000015'
+                  }}
+                >
+                  <Trash2 size={14} strokeWidth={2.5} />
+                </button>
+              </div>
             ))}
           </div>
         </Card>
@@ -407,6 +522,22 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
       <Btn onClick={onStart} disabled={selected.length < 2}>
         {selected.length < 2 ? `FALTA${selected.length === 0 ? 'N 2 JUGADORES' : ' 1 JUGADOR'}` : 'EMPEZAR'}
       </Btn>
+
+      {confirmDeleteSaved && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <AlertTriangle color={C.red} size={22} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿SEGURO?</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>
+            Vas a borrar a <strong>{confirmDeleteSaved}</strong> de jugadores guardados.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
+            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger" style={{ fontSize: 14 }}>BORRAR</Btn>
+          </div>
+        </Card></Overlay>
+      )}
     </PageBg>
   );
 }
@@ -1008,7 +1139,7 @@ function RankingsScreen({ data, onBack }) {
 }
 
 function HistoryScreen({ data, onBack, onDelete }) {
-  const games = [...data.games].reverse();
+  const games = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   return (
     <PageBg>
@@ -1093,12 +1224,34 @@ export default function App() {
     if (game.players.some(p => nt[p] >= t)) {
       const sorted = [...game.players].sort((a, b) => nt[b] - nt[a]);
       const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: sorted[0] };
-      const nd = { players: updatePlayerStats(data.players, fin), games: [...data.games, fin] };
-      setData(nd); await saveData(nd); setCompletedGame(fin); setGame(null); setScreen('gameover');
+      const savedGame = await insertGame(fin);
+      if (!savedGame) {
+        window.alert('No se pudo guardar la partida en la nube. Intentá nuevamente.');
+        return;
+      }
+      const nd = { players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] };
+      setData(nd); setCompletedGame(savedGame); setGame(null); setScreen('gameover');
     } else { setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); }
   };
   const goHome = () => { setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); };
-  const deleteGame = async (id) => { const ng = data.games.filter(g => g.id !== id); const nd = { players: recalculateStats(ng), games: ng }; setData(nd); await saveData(nd); };
+  const deleteGame = async (id) => {
+    await removeGame(id);
+    const ng = data.games.filter(g => g.id !== id);
+    const stats = recalculateStats(ng);
+    const savedNames = await loadSavedPlayerNames();
+    const nd = { players: mergeStatsWithSavedNames(stats, savedNames), games: ng };
+    setData(nd);
+  };
+  const deleteSavedPlayer = async (name) => {
+    if (!name || !data.players[name]) return;
+    await removePlayerName(name);
+    const players = { ...data.players };
+    delete players[name];
+    const savedNames = await loadSavedPlayerNames();
+    const nd = { ...data, players: mergeStatsWithSavedNames(recalculateStats(data.games), savedNames) };
+    setData(nd);
+    setSelected(prev => prev.filter(p => p !== name));
+  };
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
   const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); } };
   const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '' }); } };
@@ -1125,7 +1278,7 @@ export default function App() {
       `}</style>
       {screen === 'home' && <HomeScreen data={data} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
       {screen === 'setup' && (<>
-        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} />
+        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onSavePlayer={savePlayerName} />
         {targetPickerOpen && (
           <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>¿A CUÁNTOS PUNTOS?</div>
