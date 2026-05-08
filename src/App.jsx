@@ -312,11 +312,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack }) {
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
     
-    // Setup UX Nuevo - Scroll + Teclado
-    window.scrollTo(0, 0);
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
+    // Fix Teclado + Scroll (Mejorado)
+    setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+    }, 50);
   };
   const remove = (p) => setSelected(selected.filter(x => x !== p));
   const add = (p) => { setSelected([...selected, p]); setName(''); };
@@ -416,6 +418,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPoints, setNewPlayerPoints] = useState('0');
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
+  const [flippeadorAlert, setFlippeadorAlert] = useState(null);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -436,9 +439,31 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       setModal('scoreWarning');
       return;
     }
-    setScoreWarningConfirmed(false);
-    onCloseRound();
-    setTab('resultados');
+
+    // Lógica 85% Flippeador Ganador
+    const projectedTotals = {};
+    for (const p of game.players) {
+        const roundScore = parseInt(scores[p], 10) || 0;
+        projectedTotals[p] = (game.totals[p] || 0) + roundScore;
+    }
+    const threshold = target * 0.85;
+    const closeToWin = game.players.filter(p => projectedTotals[p] >= threshold);
+
+    if (closeToWin.length > 0) {
+        if (closeToWin.length > 1) {
+            setFlippeadorAlert({ type: 'multiple' });
+        } else {
+            const name = closeToWin[0];
+            const rem = Math.max(0, target - projectedTotals[name]);
+            setFlippeadorAlert({ type: 'single', name, remaining: rem });
+        }
+        setModal('flippeadorAlert');
+    } else {
+        setScoreWarningConfirmed(false);
+        onCloseRound();
+        setTab('resultados');
+        window.scrollTo(0,0);
+    }
   };
 
   const confirmSuspiciousScore = () => {
@@ -446,6 +471,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     setModal(null);
     onCloseRound();
     setTab('resultados');
+    window.scrollTo(0,0);
     setTimeout(() => setScoreWarningConfirmed(false), 100);
   };
 
@@ -476,7 +502,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         {[{ id: 'anotar', label: `RONDA ${String(roundNum).padStart(2, '0')}` }, { id: 'resultados', label: 'RANKING' }].map(t => {
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+            <button key={t.id} onClick={() => { setTab(t.id); window.scrollTo(0,0); }} style={{
               flex: 1, padding: '11px 8px',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.cream,
@@ -578,12 +604,35 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           })}
         </div>
         <div style={{ marginTop: 14 }}>
-          <Btn onClick={() => setTab('anotar')} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
+          <Btn onClick={() => { setTab('anotar'); window.scrollTo(0,0); }} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
         </div>
       </>)}
       </div>
 
       {/* ═══ MODALS ═══ */}
+
+      {modal === 'flippeadorAlert' && flippeadorAlert && (
+          <Overlay>
+            <Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
+              <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>
+                🔥 ¡ÚLTIMA HORA!
+              </div>
+              <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
+                {flippeadorAlert.type === 'single'
+                  ? `¡${flippeadorAlert.name} está a solo ${flippeadorAlert.remaining} puntos de ganar! No te olvides de registrar al Flippeador Ganador.`
+                  : '¡Hay varios jugadores cerca de ganar! ¡Atención al Flippeador Ganador!'}
+              </div>
+              <Btn onClick={() => { 
+                  setModal(null); 
+                  onCloseRound(); 
+                  setTab('resultados'); 
+                  window.scrollTo(0,0);
+                }}>
+                ENTENDIDO
+              </Btn>
+            </Card>
+          </Overlay>
+        )}
 
       {modal === 'options' && (
         <Overlay><Card style={{ padding: 18, maxWidth: 340, width: '100%' }}>
@@ -675,7 +724,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>Todo vuelve a 0. Mismos jugadores, objetivo {target} pts.</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger" style={{ fontSize: 14 }}>RESETEAR</Btn>
+            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); window.scrollTo(0,0); }} variant="danger" style={{ fontSize: 14 }}>RESETEAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -1016,10 +1065,11 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
-// Esto hace que la pantalla suba al inicio cada vez que cambias de sección
-useEffect(() => {
-  window.scrollTo(0, 0);
-}, [screen]);
+
+  // Scroll automático en cambio de pantalla
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [screen]);
 
   useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
 
