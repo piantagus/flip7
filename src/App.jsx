@@ -135,7 +135,13 @@ async function removePlayerName(name) {
 async function insertGame(game) {
   const { data: inserted, error } = await supabase.from('games').insert(toGameInsertRow(game)).select().single();
   if (error) {
-    console.error('No se pudo guardar partida en Supabase:', error);
+    console.error('No se pudo guardar partida en Supabase:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      raw: error
+    });
     return null;
   }
   return normalizeGameRow(inserted);
@@ -560,7 +566,24 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const MAX_SCORE = 179;
   const WARN_SCORE = 100;
 
-  const handleCloseRound = () => {
+  const applyCloseRoundResult = (result) => {
+    if (!result?.status || result.status === 'invalid') {
+      window.alert('Hay puntajes inválidos en la ronda. Revisá los valores e intentá de nuevo.');
+      return;
+    }
+    if (result?.status === 'tie') {
+      setModal('tiebreak');
+      setTab('resultados');
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (result?.status === 'continued' || result?.status === 'finished') {
+      setTab('resultados');
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handleCloseRound = async () => {
     const impossible = game.players.filter(p => parseInt(scores[p], 10) > MAX_SCORE);
     if (impossible.length > 0) {
       setModal('impossible');
@@ -593,18 +616,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       setModal('flippeadorAlert');
     } else {
       setScoreWarningConfirmed(false);
-      onCloseRound();
-      setTab('resultados');
-      window.scrollTo(0,0);
+      const result = await onCloseRound();
+      applyCloseRoundResult(result);
     }
   };
 
-  const confirmSuspiciousScore = () => {
+  const confirmSuspiciousScore = async () => {
     setScoreWarningConfirmed(true);
     setModal(null);
-    onCloseRound();
-    setTab('resultados');
-    window.scrollTo(0,0);
+    const result = await onCloseRound();
+    applyCloseRoundResult(result);
     setTimeout(() => setScoreWarningConfirmed(false), 100);
   };
 
@@ -758,15 +779,28 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </div>
               <Btn onClick={() => { 
                   setModal(null); 
-                  onCloseRound(); 
-                  setTab('resultados'); 
-                  window.scrollTo(0,0);
+                  onCloseRound().then(applyCloseRoundResult);
                 }}>
                 ENTENDIDO
               </Btn>
             </Card>
           </Overlay>
         )}
+
+      {modal === 'tiebreak' && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <AlertTriangle color={C.yellowDark} size={22} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¡HAY EMPATE!</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 16, lineHeight: 1.5 }}>
+            Se jugará una ronda extra para desempatar.
+          </div>
+          <Btn onClick={() => { setModal(null); setTab('anotar'); window.scrollTo(0, 0); }} style={{ fontSize: 14 }}>
+            CONTINUAR
+          </Btn>
+        </Card></Overlay>
+      )}
 
       {modal === 'options' && (
         <Overlay><Card style={{ padding: 18, maxWidth: 340, width: '100%' }}>
@@ -1218,20 +1252,29 @@ export default function App() {
     setScores(Object.fromEntries(selected.map(p => [p, '']))); setTargetPickerOpen(false); setScreen('game');
   };
   const closeRound = async () => {
-    const rs = {}; for (const p of game.players) { const n = parseInt(scores[p], 10); if (isNaN(n) || n < 0) return; rs[p] = n; }
+    const rs = {}; for (const p of game.players) { const n = parseInt(scores[p], 10); if (isNaN(n) || n < 0) return { status: 'invalid' }; rs[p] = n; }
     const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
     const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
     if (game.players.some(p => nt[p] >= t)) {
-      const sorted = [...game.players].sort((a, b) => nt[b] - nt[a]);
-      const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: sorted[0] };
+      const topScore = Math.max(...game.players.map(p => nt[p]));
+      const leaders = game.players.filter(p => nt[p] === topScore && nt[p] >= t);
+      if (leaders.length > 1) {
+        setGame({ ...game, rounds: nr, totals: nt });
+        setScores(Object.fromEntries(game.players.map(p => [p, ''])));
+        return { status: 'tie' };
+      }
+      const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: leaders[0] };
       const savedGame = await insertGame(fin);
       if (!savedGame) {
         window.alert('No se pudo guardar la partida en la nube. Intentá nuevamente.');
-        return;
+        return { status: 'save_error' };
       }
       const nd = { players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] };
       setData(nd); setCompletedGame(savedGame); setGame(null); setScreen('gameover');
-    } else { setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); }
+      return { status: 'finished' };
+    }
+    setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, ''])));
+    return { status: 'continued' };
   };
   const goHome = () => { setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); };
   const deleteGame = async (id) => {
