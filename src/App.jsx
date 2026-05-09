@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
@@ -46,7 +46,6 @@ const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
 
 // ═══════ STORAGE ═══════
-
 function emptyPlayerStats(name) {
   return { name, gamesPlayed: 0, wins: 0, totalPoints: 0, highestRound: 0, bestGameScore: 0, roundsPlayed: 0 };
 }
@@ -563,7 +562,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
-  const allFilled = game.players.every(p => { const v = scores[p]; return v !== '' && v !== undefined && !isNaN(parseInt(v, 10)) && parseInt(v, 10) >= 0; });
   const ranked = [...game.players].sort((a, b) => game.totals[b] - game.totals[a]);
 
   const MAX_SCORE = 179;
@@ -713,6 +711,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, letterSpacing: '2px', flexShrink: 0 }}>PTS</div>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
+                    onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
+                    onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="0" style={{
                       flex: 1, background: C.white, border: `3px solid ${C.navy}`, borderRadius: 8, padding: '8px 10px',
@@ -730,7 +730,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           })}
         </div>
         <div style={{ marginTop: 14 }}>
-          <Btn onClick={handleCloseRound} disabled={!allFilled} icon={Zap}>AGREGAR RONDA</Btn>
+          <Btn onClick={handleCloseRound} icon={Zap}>AGREGAR RONDA</Btn>
         </div>
       </>)}
 
@@ -1234,30 +1234,61 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
+  
+  const wakeLockRef = useRef(null);
 
+  // 1. CARGAR DATOS Y PERSISTENCIA
   useEffect(() => {
-    const scrollToTop = () => {
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
-    };
-    scrollToTop();
-    const t = setTimeout(scrollToTop, 150);
-    return () => clearTimeout(t);
-  }, [screen]);
+    loadData().then(d => { setData(d); setLoading(false); });
+    
+    // Recuperar partida guardada
+    const savedGame = localStorage.getItem('flip7_active_game');
+    const savedScores = localStorage.getItem('flip7_active_scores');
+    if (savedGame && savedScores) {
+      setGame(JSON.parse(savedGame));
+      setScores(JSON.parse(savedScores));
+      setScreen('game');
+    }
+  }, []);
 
-  useEffect(() => { loadData().then(d => { setData(d); setLoading(false); }); }, []);
+  // 2. GUARDAR ESTADO EN LOCALSTORAGE (MECANISMO DE ANTIFREEZE)
+  useEffect(() => {
+    if (game && screen === 'game') {
+      localStorage.setItem('flip7_active_game', JSON.stringify(game));
+      localStorage.setItem('flip7_active_scores', JSON.stringify(scores));
+    } else if (screen === 'home' || screen === 'gameover') {
+      localStorage.removeItem('flip7_active_game');
+      localStorage.removeItem('flip7_active_scores');
+    }
+  }, [game, scores, screen]);
+
+  // 3. WAKE LOCK (PARA QUE LA PANTALLA NO SE APAGUE)
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && screen === 'game') {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+        } catch (err) { console.error(`${err.name}, ${err.message}`); }
+      }
+    };
+    requestWakeLock();
+    return () => { if (wakeLockRef.current) wakeLockRef.current.release(); };
+  }, [screen]);
 
   const openTargetPicker = () => { if (selected.length < 2) return; setTargetPickerOpen(true); };
   const startGame = (targetVal) => {
-    setGame({ players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal });
-    setScores(Object.fromEntries(selected.map(p => [p, '']))); setTargetPickerOpen(false); setScreen('game');
+    const newGame = { players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal };
+    setGame(newGame);
+    setScores(Object.fromEntries(selected.map(p => [p, '0']))); // Puntajes en 0 por defecto
+    setTargetPickerOpen(false);
+    setScreen('game');
   };
+
   const closeRound = async () => {
     const rs = {}; 
     for (const p of game.players) { 
-      const n = parseInt(scores[p], 10); 
-      if (isNaN(n) || n < 0) return { status: 'invalid' }; 
+      // Si el campo está vacío, asumimos 0
+      const n = parseInt(scores[p], 10) || 0; 
       rs[p] = n; 
     }
     
@@ -1275,7 +1306,8 @@ export default function App() {
       // Si hay empate en el primer puesto (puestos compartidos)
       if (leaders.length > 1) {
         setGame({ ...game, rounds: nr, totals: nt });
-        setScores(Object.fromEntries(game.players.map(p => [p, ''])));
+        setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+        alert('¡HAY EMPATE! Ronda extra para desempatar.');
         return { status: 'tie' };
       }
       
@@ -1292,7 +1324,6 @@ export default function App() {
       
       const savedGame = await insertGame(fin);
       if (!savedGame) {
-        // El alert técnico ya saltó dentro de insertGame
         return { status: 'save_error' };
       }
       
@@ -1305,11 +1336,18 @@ export default function App() {
     }
     
     setGame({ ...game, rounds: nr, totals: nt }); 
-    setScores(Object.fromEntries(game.players.map(p => [p, ''])));
+    setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+    window.scrollTo(0, 0);
     return { status: 'continued' };
   };
 
-  const goHome = () => { setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); };
+  const goHome = () => { 
+    if (game && screen === 'game') {
+        if (!window.confirm("¿Seguro que querés abandonar? Se perderá el progreso.")) return;
+    }
+    setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); 
+  };
+
   const deleteGame = async (id) => {
     await removeGame(id);
     const ng = data.games.filter(g => g.id !== id);
@@ -1318,6 +1356,7 @@ export default function App() {
     const nd = { players: mergeStatsWithSavedNames(stats, savedNames), games: ng };
     setData(nd);
   };
+
   const deleteSavedPlayer = async (name) => {
     if (!name || !data.players[name]) return;
     await removePlayerName(name);
@@ -1328,9 +1367,10 @@ export default function App() {
     setData(nd);
     setSelected(prev => prev.filter(p => p !== name));
   };
+
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
-  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); } };
-  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '' }); } };
+  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
+  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
   const modifyRound = (idx, newScores) => {
     if (!game) return;
     const ur = game.rounds.map((r, i) => i === idx ? { ...r, scores: newScores } : r);
@@ -1345,12 +1385,13 @@ export default function App() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; }
         button { transition: transform 0.08s; }
         button:active { transform: translateY(2px) !important; }
         input:focus { box-shadow: 0 0 0 3px ${C.yellow}60 !important; }
         ::-webkit-scrollbar { display: none; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
       {screen === 'home' && <HomeScreen data={data} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
       {screen === 'setup' && (<>
