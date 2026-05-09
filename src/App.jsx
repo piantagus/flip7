@@ -181,7 +181,7 @@ function PageBg({ children }) {
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
       <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '24px 18px 50px', zIndex: 2 }}>
+      <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '10px 18px 50px', zIndex: 2 }}>
         {children}
       </div>
     </div>
@@ -314,10 +314,10 @@ function RankBadge({ rank }) {
   const bg = rank === 1 ? `linear-gradient(135deg, ${C.yellowBright}, ${C.yellowDark})` : rank === 2 ? `linear-gradient(135deg, #d0d0d0, #a0a0a0)` : rank === 3 ? 'linear-gradient(135deg, #cd9b6a, #a07040)' : C.creamDark;
   return (
     <div style={{
-      width: 32, height: 32, borderRadius: 999, background: bg,
-      border: `3px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: F.display, fontSize: 14, color: C.navy, flexShrink: 0,
-      boxShadow: rank === 1 ? `0 0 10px ${C.yellow}60` : '2px 2px 0 #00000020'
+      width: 28, height: 28, borderRadius: 999, background: bg,
+      border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: F.display, fontSize: 12, color: C.navy, flexShrink: 0,
+      boxShadow: rank === 1 ? `0 0 8px ${C.yellow}60` : '2px 2px 0 #00000020'
     }}>{rank}</div>
   );
 }
@@ -400,6 +400,7 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
 function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer }) {
   const [name, setName] = useState('');
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
+  const [alertMessage, setAlertMessage] = useState(null);
   const existing = Object.keys(data.players).sort();
   const available = existing.filter(p => !selected.includes(p));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
@@ -415,15 +416,20 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     
     setTimeout(() => {
       window.scrollTo(0, 0);
-      document.body.scrollTop = 0; 
-      document.documentElement.scrollTop = 0; 
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
     }, 100);
   };
   const remove = (p) => setSelected(selected.filter(x => x !== p));
   const add = (p) => { setSelected([...selected, p]); setName(''); };
+
+  const handleTryDelete = (p) => {
+    // Verificamos si el jugador tiene partidas en el historial
+    const hasGames = data.games.some(g => g.players.includes(p));
+    if (hasGames) {
+      setAlertMessage(`No se puede borrar a ${p} porque tiene partidas guardadas en el historial. Si querés proceder, debés borrar esas partidas primero.`);
+    } else {
+      setConfirmDeleteSaved(p);
+    }
+  };
 
   return (
     <PageBg>
@@ -476,20 +482,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                   display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '2px 2px 0 #00000015'
                 }}><Plus size={13} strokeWidth={3} /> {p}</button>
                 <button
-                  onClick={() => setConfirmDeleteSaved(p)}
+                  onClick={() => handleTryDelete(p)}
                   title={`Borrar ${p}`}
-                  aria-label={`Borrar ${p}`}
                   style={{
-                    background: `${C.red}20`,
-                    color: C.red,
-                    border: `3px solid ${C.red}`,
-                    borderRadius: 999,
-                    width: 34,
-                    height: 34,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    background: `${C.red}20`, color: C.red, border: `3px solid ${C.red}`, borderRadius: 999,
+                    width: 34, height: 34, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '2px 2px 0 #00000015'
                   }}
                 >
@@ -546,6 +543,19 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
           </div>
         </Card></Overlay>
       )}
+
+      {alertMessage && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <AlertTriangle color={C.yellowDark} size={22} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>AVISO</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
+            {alertMessage}
+          </div>
+          <Btn onClick={() => setAlertMessage(null)}>ENTENDIDO</Btn>
+        </Card></Overlay>
+      )}
     </PageBg>
   );
 }
@@ -568,18 +578,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const WARN_SCORE = 100;
 
   const applyCloseRoundResult = (result) => {
-    if (!result?.status || result.status === 'invalid') {
-      return;
-    }
+    if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
       setModal('tiebreak');
       setTab('resultados');
-      window.scrollTo(0, 0);
       return;
     }
     if (result?.status === 'continued' || result?.status === 'finished') {
       setTab('resultados');
-      window.scrollTo(0, 0);
     }
   };
 
@@ -656,14 +662,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         {[{ id: 'anotar', label: `RONDA ${String(roundNum).padStart(2, '0')}` }, { id: 'resultados', label: 'RANKING' }].map(t => {
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => { setTab(t.id); window.scrollTo(0,0); }} style={{
+            <button key={t.id} onClick={() => { setTab(t.id); }} style={{
               flex: 1, padding: '14px 10px',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.cream,
               border: `4px solid ${C.navy}`,
               borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
-              fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px',
+              fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px',
               cursor: 'pointer',
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
@@ -675,55 +681,64 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       <div style={{
         background: C.cream, border: `4px solid ${C.navy}`, borderRadius: '0 0 16px 16px',
-        boxShadow: shadow(C.navyDark, 5, 5), padding: 12, position: 'relative', zIndex: 2
+        boxShadow: shadow(C.navyDark, 5, 5), padding: '8px 10px', position: 'relative', zIndex: 2
       }}>
 
       {tab === 'anotar' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {game.players.map(p => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
             const remaining = Math.max(0, target - total);
             const isLeader = total === Math.max(...Object.values(game.totals)) && total > 0;
+            const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
+            const isBustDisabled = (scores[p] === '0' || scores[p] === '');
+            
             return (
               <div key={p} style={{
                 background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 12,
-                padding: 12, boxShadow: '3px 3px 0 #00000010'
+                padding: '8px 10px', boxShadow: '3px 3px 0 #00000010'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {isLeader && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 15, color: C.navy }}>{p}</span>
+                    {isLeader && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 9,
-                    padding: '3px 8px', borderRadius: 999, letterSpacing: '0.5px',
-                    border: `1.5px solid ${C.navy}`, fontWeight: 'bold'
+                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 8,
+                    padding: '2px 7px', borderRadius: 999, letterSpacing: '0.5px',
+                    border: `1.2px solid ${C.navy}`, fontWeight: 'bold'
                   }}>FALTAN {remaining}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 35, color: C.navy, textShadow: `2px 2px 0 ${C.yellowDark}40` }}>{total}</span>
-                  <span style={{ fontFamily: F.body, fontSize: 12, color: C.inkSoft }}>/ {target}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+                  <span style={{ fontFamily: F.display, fontSize: 26, color: C.navy }}>{total}</span>
+                  <span style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft }}>/ {target}</span>
                 </div>
-                <div style={{ height: 10, background: C.creamDark, borderRadius: 999, border: `2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 10 }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${C.yellow}, ${C.yellowBright})`, transition: 'width 0.4s', borderRadius: 999 }} />
+                <div style={{ height: 7, background: C.creamDark, borderRadius: 999, border: `1.5px solid ${C.navy}`, overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s', borderRadius: 999 }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, letterSpacing: '2px', flexShrink: 0 }}>PTS</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, letterSpacing: '1px', flexShrink: 0 }}>PTS</div>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
                     onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
                     onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="0" style={{
-                      flex: 1, background: C.white, border: `3px solid ${C.navy}`, borderRadius: 8, padding: '8px 10px',
-                      textAlign: 'center', fontFamily: F.display, fontSize: 20, color: C.navy, outline: 'none',
-                      boxShadow: `inset 2px 2px 0 ${C.creamDark}`, minWidth: 50
+                      flex: 1, background: C.white, border: `2.5px solid ${C.navy}`, borderRadius: 8, padding: '6px 8px',
+                      textAlign: 'center', fontFamily: F.display, fontSize: 18, color: C.navy, outline: 'none',
+                      boxShadow: `inset 1.5px 1.5px 0 ${C.creamDark}`, minWidth: 40
                   }} />
-                  <button onClick={() => setScores({ ...scores, [p]: '0' })} style={{
-                    background: C.red, color: C.white, border: `3px solid ${C.navyDark}`, borderRadius: 8,
-                    padding: '8px 10px', cursor: 'pointer', fontFamily: F.display, fontSize: 10, letterSpacing: '1px',
-                    boxShadow: '2px 2px 0 #00000030', flexShrink: 0
-                  }}>BUST</button>
+                  <button 
+                    onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }} 
+                    style={{
+                      background: isBustDisabled ? `${C.red}40` : C.red, 
+                      color: C.white, border: `2.5px solid ${C.navyDark}`, borderRadius: 8,
+                      padding: '8px 10px', cursor: isBustDisabled ? 'default' : 'pointer', 
+                      fontFamily: F.display, fontSize: 9, letterSpacing: '1px',
+                      boxShadow: isBustDisabled ? 'none' : '2px 2px 0 #00000030', 
+                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1
+                    }}
+                  >BUST</button>
                 </div>
               </div>
             );
@@ -735,35 +750,37 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </>)}
 
       {tab === 'resultados' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {ranked.map((p, i) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
+            const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
+            
             return (
               <div key={p} style={{ 
-                display: 'flex', alignItems: 'center', gap: 12, padding: '16px 10px', 
-                background: C.creamLight, borderRadius: 14, borderBottom: `3px solid ${C.navy}10` 
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 8px', 
+                background: C.creamLight, borderRadius: 12, borderBottom: `2px solid ${C.navy}10` 
               }}>
                 <RankBadge rank={i + 1} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {i === 0 && total > 0 && <Crown size={16} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy }}>{p}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {i === 0 && total > 0 && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
                   </div>
-                  <div style={{ height: 7, background: C.creamDark, borderRadius: 999, marginTop: 6, border: `1px solid ${C.navy}30`, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: C.yellow, borderRadius: 999, transition: 'width 0.4s' }} />
+                  <div style={{ height: 5, background: C.creamDark, borderRadius: 999, marginTop: 4, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.4s' }} />
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: F.display, fontSize: 26, color: C.navy, lineHeight: 1 }}>{total}</div>
-                  <div style={{ fontFamily: F.display, fontSize: 12, color: C.red, letterSpacing: '1px', fontWeight: 'bold', marginTop: 4 }}>FALTAN {remaining}</div>
+                  <div style={{ fontFamily: F.display, fontSize: 22, color: C.navy, lineHeight: 1 }}>{total}</div>
+                  <div style={{ fontFamily: F.display, fontSize: 10, color: C.red, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 2 }}>-{remaining}</div>
                 </div>
               </div>
             );
           })}
         </div>
         <div style={{ marginTop: 18 }}>
-          <Btn onClick={() => { setTab('anotar'); window.scrollTo(0,0); }} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
+          <Btn onClick={() => { setTab('anotar'); }} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
         </div>
       </>)}
       </div>
@@ -798,7 +815,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 16, lineHeight: 1.5 }}>
             Se jugará una ronda extra para desempatar.
           </div>
-          <Btn onClick={() => { setModal(null); setTab('anotar'); window.scrollTo(0, 0); }} style={{ fontSize: 14 }}>
+          <Btn onClick={() => { setModal(null); setTab('anotar'); }} style={{ fontSize: 14 }}>
             CONTINUAR
           </Btn>
         </Card></Overlay>
@@ -894,7 +911,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>Todo vuelve a 0. Mismos jugadores, objetivo {target} pts.</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); window.scrollTo(0,0); }} variant="danger" style={{ fontSize: 14 }}>RESETEAR</Btn>
+            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger" style={{ fontSize: 14 }}>RESETEAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -955,24 +972,24 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           )}
           <div style={{ fontFamily: F.display, fontSize: 10, color: C.navy, letterSpacing: '2px', marginBottom: 6 }}>PUNTOS INICIALES</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            {['0', 'Promedio'].map(opt => {
-              const isAvg = opt === 'Promedio';
-              const avgVal = game.players.length > 0 ? Math.round(Object.values(game.totals).reduce((a, b) => a + b, 0) / game.players.length) : 0;
-              const isSel = isAvg ? newPlayerPoints === 'avg' : newPlayerPoints === '0';
+            {['0', 'Minimo'].map(opt => {
+              const isMin = opt === 'Minimo';
+              const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
+              const isSel = isMin ? newPlayerPoints === 'min' : newPlayerPoints === '0';
               return (
-                <button key={opt} onClick={() => setNewPlayerPoints(isAvg ? 'avg' : '0')} style={{
+                <button key={opt} onClick={() => setNewPlayerPoints(isMin ? 'min' : '0')} style={{
                   flex: 1, background: isSel ? C.navy : C.creamLight, color: isSel ? C.yellow : C.navy,
                   border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 6px', cursor: 'pointer',
                   fontFamily: F.display, fontSize: 10, textAlign: 'center', boxShadow: '2px 2px 0 #00000010'
                 }}>
-                  <div>{isAvg ? 'PROMEDIO' : '0 PTS'}</div>
-                  {isAvg && <div style={{ fontFamily: F.body, fontSize: 10, marginTop: 2, opacity: 0.8 }}>({avgVal} pts)</div>}
+                  <div>{isMin ? 'IGUALAR MENOR' : '0 PTS'}</div>
+                  {isMin && <div style={{ fontFamily: F.body, fontSize: 10, marginTop: 2, opacity: 0.8 }}>({minVal} pts)</div>}
                 </button>
               );
             })}
-            <input type="text" inputMode="numeric" value={newPlayerPoints !== '0' && newPlayerPoints !== 'avg' ? newPlayerPoints : ''}
+            <input type="text" inputMode="numeric" value={newPlayerPoints !== '0' && newPlayerPoints !== 'min' ? newPlayerPoints : ''}
               onChange={(e) => setNewPlayerPoints(e.target.value.replace(/[^0-9]/g, '') || '0')}
-              onFocus={() => { if (newPlayerPoints === '0' || newPlayerPoints === 'avg') setNewPlayerPoints(''); }}
+              onFocus={() => { if (newPlayerPoints === '0' || newPlayerPoints === 'min') setNewPlayerPoints(''); }}
               placeholder="Custom" style={{
                 flex: 1, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
                 padding: '10px 6px', textAlign: 'center', fontFamily: F.display, fontSize: 11, color: C.navy, outline: 'none'
@@ -982,8 +999,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
             <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => {
               const nm = newPlayerName.trim(); if (!nm || game.players.includes(nm)) return;
-              const avgVal = game.players.length > 0 ? Math.round(Object.values(game.totals).reduce((a, b) => a + b, 0) / game.players.length) : 0;
-              onAddPlayer(nm, newPlayerPoints === 'avg' ? avgVal : parseInt(newPlayerPoints, 10) || 0);
+              const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
+              onAddPlayer(nm, newPlayerPoints === 'min' ? minVal : parseInt(newPlayerPoints, 10) || 0);
               setModal(null);
             }} style={{ fontSize: 14 }}>AGREGAR</Btn>
           </div>
@@ -1142,7 +1159,7 @@ function RankingsScreen({ data, onBack }) {
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               background: active ? C.yellow : C.tealDark, color: active ? C.navy : C.cream,
               border: `3px solid ${active ? C.navy : C.cream}40`, borderRadius: 10, padding: '7px 10px',
-              fontFamily: F.display, fontSize: 9, letterSpacing: '1px', cursor: 'pointer', flexShrink: 0,
+              fontFamily: F.display, fontSize: 10, letterSpacing: '1px', cursor: 'pointer', flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 4,
               boxShadow: active ? shadowSm() : 'none'
             }}><I size={12} strokeWidth={2.5} /> {t.label}</button>
@@ -1152,19 +1169,19 @@ function RankingsScreen({ data, onBack }) {
       {sorted.length === 0 ? (
         <Card style={{ padding: 32, textAlign: 'center' }}><div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft }}>No hay partidas aún.</div></Card>
       ) : (
-        <Card style={{ padding: 10 }}>
+        <Card style={{ padding: 8 }}>
           {sorted.map((p, i) => (
-            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 4px', borderBottom: i < sorted.length - 1 ? `2px dashed ${C.navy}12` : 'none' }}>
+            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <RankBadge rank={i + 1} />
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: C.inkSoft }}>{p.gamesPlayed} partidas · {p.wins} ganadas</div>
+                  <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p.name}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 9, color: C.inkSoft }}>{p.gamesPlayed}p · {p.wins}w</div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: F.display, fontSize: 20, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
-                {at.suf && <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, letterSpacing: '1px' }}>{at.suf.toUpperCase()}</div>}
+                <div style={{ fontFamily: F.display, fontSize: 18, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
+                {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft, letterSpacing: '0.5px' }}>{at.suf.toUpperCase()}</div>}
               </div>
             </div>
           ))}
@@ -1237,6 +1254,13 @@ export default function App() {
   
   const wakeLockRef = useRef(null);
 
+  // ARREGLO DEL SCROLL: Forzamos scroll arriba en cada cambio de pantalla
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.body.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [screen]);
+
   // 1. CARGAR DATOS Y PERSISTENCIA
   useEffect(() => {
     loadData().then(d => { setData(d); setLoading(false); });
@@ -1287,7 +1311,6 @@ export default function App() {
   const closeRound = async () => {
     const rs = {}; 
     for (const p of game.players) { 
-      // Si el campo está vacío, asumimos 0
       const n = parseInt(scores[p], 10) || 0; 
       rs[p] = n; 
     }
@@ -1298,20 +1321,16 @@ export default function App() {
     const nr = [...game.rounds, { scores: rs }]; 
     const t = game.targetScore;
     
-    // Verificamos si alguien llegó al objetivo
     if (game.players.some(p => nt[p] >= t)) {
       const topScore = Math.max(...game.players.map(p => nt[p]));
       const leaders = game.players.filter(p => nt[p] === topScore);
       
-      // Si hay empate en el primer puesto (puestos compartidos)
       if (leaders.length > 1) {
         setGame({ ...game, rounds: nr, totals: nt });
         setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
-        alert('¡HAY EMPATE! Ronda extra para desempatar.');
         return { status: 'tie' };
       }
       
-      // Ganador único absoluto
       const fin = { 
         id: `g-${Date.now()}`, 
         date: new Date().toISOString(), 
@@ -1323,9 +1342,7 @@ export default function App() {
       };
       
       const savedGame = await insertGame(fin);
-      if (!savedGame) {
-        return { status: 'save_error' };
-      }
+      if (!savedGame) return { status: 'save_error' };
       
       const nd = { players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] };
       setData(nd); 
@@ -1337,7 +1354,6 @@ export default function App() {
     
     setGame({ ...game, rounds: nr, totals: nt }); 
     setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
-    window.scrollTo(0, 0);
     return { status: 'continued' };
   };
 
@@ -1359,6 +1375,11 @@ export default function App() {
 
   const deleteSavedPlayer = async (name) => {
     if (!name || !data.players[name]) return;
+    // Si tiene partidas, este botón ya no debería ejecutarse por la guardia de la UI, 
+    // pero mantenemos la lógica por seguridad.
+    const hasGames = data.games.some(g => g.players.includes(name));
+    if (hasGames) return;
+
     await removePlayerName(name);
     const players = { ...data.players };
     delete players[name];
@@ -1370,7 +1391,19 @@ export default function App() {
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
   const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
-  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
+  
+  const addPlayerMidGame = (name, pts) => { 
+    if (game && !game.players.includes(name)) { 
+      setGame({ 
+        ...game, 
+        players: [...game.players, name], 
+        totals: { ...game.totals, [name]: pts }, 
+        rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) 
+      }); 
+      setScores({ ...scores, [name]: '0' }); 
+    } 
+  };
+
   const modifyRound = (idx, newScores) => {
     if (!game) return;
     const ur = game.rounds.map((r, i) => i === idx ? { ...r, scores: newScores } : r);
