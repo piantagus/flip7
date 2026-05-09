@@ -103,8 +103,8 @@ async function loadData() {
     return { players: mergeStatsWithSavedNames(stats, savedNames), games };
   } catch (e) {
     console.error('No se pudo cargar datos desde Supabase:', e);
+    return { players: {}, games: [] };
   }
-  return { players: {}, games: [] };
 }
 
 async function loadSavedPlayerNames() {
@@ -264,6 +264,91 @@ function HeaderBar({ onBack, title }) {
         WebkitTextStroke: `1px ${C.navy}`, paintOrder: 'stroke fill'
       }}>{title}</div>
     </div>
+  );
+}
+
+function Overlay({ children }) {
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 20,
+      zIndex: 50
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ text, color = C.red }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: -10,
+      left: '50%',
+      transform: 'translateX(-50%) rotate(-8deg)',
+      background: color,
+      color: C.white,
+      fontSize: 8,
+      padding: '3px 10px',
+      borderRadius: 6,
+      fontFamily: F.display,
+      letterSpacing: '1.5px',
+      border: `3px solid ${C.navyDark}`,
+      whiteSpace: 'nowrap',
+      boxShadow: '2px 2px 0 #00000040',
+      zIndex: 5
+    }}>{text}</div>
+  );
+}
+
+function OptionRow({ icon: Icon, title, subtitle, onClick, danger = false }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      width: '100%',
+      background: danger ? `${C.red}12` : C.creamLight,
+      border: `3px solid ${danger ? C.red : C.navy}`,
+      borderRadius: 12,
+      padding: '12px 14px',
+      cursor: 'pointer',
+      textAlign: 'left',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      boxShadow: `3px 3px 0 ${danger ? C.redDark : C.navyDark}`
+    }}>
+      <div style={{
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        background: danger ? `${C.red}20` : C.yellow,
+        border: `2px solid ${danger ? C.red : C.navy}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}><Icon size={18} color={danger ? C.red : C.navy} strokeWidth={2.5} /></div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: F.display, fontSize: 11, color: danger ? C.red : C.navy, letterSpacing: '1px' }}>{title}</div>
+        {subtitle && <div style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft, marginTop: 1 }}>{subtitle}</div>}
+      </div>
+      <ChevronRight size={16} color={danger ? C.red : C.inkSoft} />
+    </button>
+  );
+}
+
+function CardsIcon({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="8" y="4" width="8" height="15" rx="1.5" transform="rotate(-18 12 18)" fill={C.red} stroke={C.navy} strokeWidth="1.5" />
+      <rect x="8" y="4" width="8" height="15" rx="1.5" transform="rotate(18 12 18)" fill={C.blueLight} stroke={C.navy} strokeWidth="1.5" />
+      <rect x="8" y="4" width="8" height="15" rx="1.5" fill={C.cream} stroke={C.navy} strokeWidth="1.8" />
+      <text x="12" y="14" textAnchor="middle" fontFamily={F.display} fontSize="7" fill={C.navy} fontWeight="bold">7</text>
+    </svg>
   );
 }
 
