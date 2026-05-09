@@ -95,10 +95,8 @@ async function loadData() {
   try {
     let gamesRows = [];
     const { data: gamesData, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
-    
     if (error) throw error;
     gamesRows = gamesData ?? [];
-
     const games = sortGamesNewestFirst(gamesRows.map(normalizeGameRow));
     const stats = recalculateStats(games);
     const savedNames = await loadSavedPlayerNames();
@@ -135,7 +133,6 @@ async function insertGame(game) {
       .insert([toGameInsertRow(game)])
       .select()
       .single();
-
     if (error) {
       console.error('Error de Supabase:', error);
       alert('Error técnico de la nube: ' + error.message + '\nDetalle: ' + (error.details || 'ninguno'));
@@ -175,7 +172,7 @@ function fmtDate(iso) {
 
 // ═══════ DESIGN ATOMS ═══════
 
-function PageBg({ children }) {
+function PageBg({ children, showEric = false }) {
   return (
     <div style={{ minHeight: '100vh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
@@ -184,11 +181,13 @@ function PageBg({ children }) {
       <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '10px 18px 20px', zIndex: 2 }}>
         {children}
         
-        {/* Footer persistente en todas las páginas */}
-        <div style={{ textAlign: 'center', marginTop: 40, paddingBottom: 20 }}>
-          <div style={{ fontFamily: F.serif, fontSize: 13, color: C.navy, lineHeight: 1.8 }}>
-            A game by Eric Olsen
-          </div>
+        {/* Footer dinámico */}
+        <div style={{ textAlign: 'center', marginTop: 30, paddingBottom: 20 }}>
+          {showEric && (
+            <div style={{ fontFamily: F.serif, fontSize: 13, color: C.navy, lineHeight: 1.8, marginBottom: 4 }}>
+              A game by Eric Olsen
+            </div>
+          )}
           <div style={{ color: C.yellow, fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px', textShadow: `1px 1px 0 ${C.navy}80` }}>
             Supported by @piantapp
           </div>
@@ -268,65 +267,13 @@ function HeaderBar({ onBack, title }) {
   );
 }
 
-function Badge({ text, color = C.red }) {
-  return (
-    <div style={{
-      position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
-      background: color, color: C.white, fontSize: 8, padding: '3px 10px', borderRadius: 999,
-      fontFamily: F.display, letterSpacing: '1.5px', border: `3px solid ${C.navyDark}`,
-      whiteSpace: 'nowrap', boxShadow: '2px 2px 0 #00000040', zIndex: 5
-    }}>{text}</div>
-  );
-}
-
-function CardsIcon({ size = 30 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="8" y="4" width="8" height="15" rx="1.5" transform="rotate(-18 12 18)" fill={C.red} stroke={C.navy} strokeWidth="1.5" />
-      <rect x="8" y="4" width="8" height="15" rx="1.5" transform="rotate(18 12 18)" fill={C.blueLight} stroke={C.navy} strokeWidth="1.5" />
-      <rect x="8" y="4" width="8" height="15" rx="1.5" fill={C.cream} stroke={C.navy} strokeWidth="1.8" />
-      <text x="12" y="14" textAnchor="middle" fontFamily={F.display} fontSize="7" fill={C.navy} fontWeight="bold">7</text>
-    </svg>
-  );
-}
-
-function OptionRow({ icon: Icon, title, subtitle, onClick, danger = false }) {
-  return (
-    <button onClick={onClick} style={{
-      width: '100%', background: danger ? `${C.red}12` : C.creamLight,
-      border: `3px solid ${danger ? C.red : C.navy}`, borderRadius: 12, padding: '12px 14px',
-      cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
-      boxShadow: `3px 3px 0 ${danger ? C.redDark : C.navyDark}`
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 10,
-        background: danger ? `${C.red}20` : C.yellow, border: `2px solid ${danger ? C.red : C.navy}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-      }}><Icon size={18} color={danger ? C.red : C.navy} strokeWidth={2.5} /></div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: F.display, fontSize: 11, color: danger ? C.red : C.navy, letterSpacing: '1px' }}>{title}</div>
-        {subtitle && <div style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft, marginTop: 1 }}>{subtitle}</div>}
-      </div>
-      <ChevronRight size={16} color={danger ? C.red : C.inkSoft} />
-    </button>
-  );
-}
-
-function Overlay({ children }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: '#00000080', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}>
-      {children}
-    </div>
-  );
-}
-
 function RankBadge({ rank }) {
   const bg = rank === 1 ? `linear-gradient(135deg, ${C.yellowBright}, ${C.yellowDark})` : rank === 2 ? `linear-gradient(135deg, #d0d0d0, #a0a0a0)` : rank === 3 ? 'linear-gradient(135deg, #cd9b6a, #a07040)' : C.creamDark;
   return (
     <div style={{
-      width: 28, height: 28, borderRadius: 999, background: bg,
+      width: 24, height: 24, borderRadius: 999, background: bg,
       border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: F.display, fontSize: 12, color: C.navy, flexShrink: 0,
+      fontFamily: F.display, fontSize: 10, color: C.navy, flexShrink: 0,
       boxShadow: rank === 1 ? `0 0 8px ${C.yellow}60` : '2px 2px 0 #00000020'
     }}>{rank}</div>
   );
@@ -336,7 +283,7 @@ function RankBadge({ rank }) {
 
 function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
   return (
-    <PageBg>
+    <PageBg showEric={true}>
       <div style={{ textAlign: 'center', padding: '16px 0 28px' }}>
         <div style={{
           display: 'inline-block', background: C.navy, color: C.cream, padding: '4px 16px',
@@ -411,7 +358,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const available = existing.filter(p => !selected.includes(p));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
   const q = name.trim().toLowerCase();
-  const suggestions = q ? available.filter(p => p.toLowerCase().includes(q)).slice(0, 5) : [];
 
   const addNew = () => {
     const t = name.trim(); if (!t) return;
@@ -425,7 +371,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const add = (p) => { setSelected([...selected, p]); setName(''); };
 
   const handleTryStart = () => {
-    // NUEVA VALIDACIÓN: Si hay texto en el input de agregar nuevo
     if (name.trim() !== '') {
       setAlertMessage("Hay un nombre pendiente de ingresar en la jugada. Por favor, agregalo con el botón (+) o borrá el texto para continuar.");
       return;
@@ -443,23 +388,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   };
 
   return (
-    <PageBg>
+    <PageBg showEric={false}>
       <HeaderBar title="NUEVA PARTIDA" onBack={onBack} />
-
-      {lastGame && selected.length === 0 && (
-        <button onClick={() => setSelected([...lastGame.players])} style={{
-          width: '100%', background: C.tealDark, border: `3px dashed ${C.yellow}`, borderRadius: 14,
-          padding: '12px 14px', marginBottom: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
-          boxShadow: `3px 3px 0 ${C.tealShadow}`
-        }}>
-          <RotateCcw size={20} color={C.yellow} strokeWidth={2.5} />
-          <div>
-            <div style={{ fontFamily: F.display, fontSize: 11, color: C.yellow, letterSpacing: '1.5px' }}>REPETIR ÚLTIMA PARTIDA</div>
-            <div style={{ fontFamily: F.body, fontSize: 12, color: C.cream, marginTop: 2, opacity: 0.85 }}>{lastGame.players.join(' · ')}</div>
-          </div>
-        </button>
-      )}
-
       <Card style={{ padding: 14, marginBottom: 12 }}>
         <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>JUGADORES ({selected.length})</div>
         {selected.length === 0 ? (
@@ -494,7 +424,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                 }}><Plus size={13} strokeWidth={3} /> {p}</button>
                 <button
                   onClick={() => handleTryDelete(p)}
-                  title={`Borrar ${p}`}
                   style={{
                     background: `${C.red}20`, color: C.red, border: `3px solid ${C.red}`, borderRadius: 999,
                     width: 34, height: 34, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -522,17 +451,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             boxShadow: shadowSm(), color: C.navy, display: 'flex', alignItems: 'center'
           }}><Plus size={22} strokeWidth={3} /></button>
         </div>
-        {suggestions.length > 0 && (
-          <div style={{ marginTop: 8, background: C.white, border: `3px solid ${C.navy}`, borderRadius: 10, overflow: 'hidden' }}>
-            {suggestions.map((s, i) => (
-              <button key={s} onClick={() => add(s)} style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px',
-                background: i % 2 === 0 ? C.creamLight : C.white, border: 'none',
-                fontFamily: F.body, fontSize: 14, color: C.navy, textAlign: 'left', cursor: 'pointer'
-              }}><Plus size={14} strokeWidth={3} color={C.yellow} /><span style={{ fontWeight: 600 }}>{s}</span></button>
-            ))}
-          </div>
-        )}
       </Card>
 
       <Btn onClick={handleTryStart} disabled={selected.length < 2}>
@@ -549,8 +467,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             Vas a borrar a <strong>{confirmDeleteSaved}</strong> de jugadores guardados.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger" style={{ fontSize: 14 }}>BORRAR</Btn>
+            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary">CANCELAR</Btn>
+            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger">BORRAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -647,7 +565,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   return (
-    <PageBg>
+    <PageBg showEric={false}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
@@ -674,13 +592,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => { setTab(t.id); }} style={{
-              flex: 1, padding: '14px 10px',
+              flex: 1, padding: '12px 10px',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.cream,
               border: `4px solid ${C.navy}`,
               borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
-              fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', // +1 punto tamaño tab
+              fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', // +1 punto
               cursor: 'pointer',
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
@@ -692,11 +610,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       <div style={{
         background: C.cream, border: `4px solid ${C.navy}`, borderRadius: '0 0 16px 16px',
-        boxShadow: shadow(C.navyDark, 5, 5), padding: '8px 10px', position: 'relative', zIndex: 2
+        boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 2
       }}>
 
       {tab === 'anotar' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}> {/* Más compacto */}
           {game.players.map(p => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
@@ -707,46 +625,45 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             
             return (
               <div key={p} style={{
-                background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 12,
-                padding: '8px 10px', boxShadow: '3px 3px 0 #00000010'
+                background: C.creamLight, border: `2.5px solid ${C.navy}`, borderRadius: 10,
+                padding: '6px 10px', boxShadow: '2px 2px 0 #00000010'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {isLeader && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {isLeader && <Crown size={11} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 12, // FALTAN más grande
-                    padding: '2px 7px', borderRadius: 999, letterSpacing: '0.5px',
-                    border: `1.2px solid ${C.navy}`, fontWeight: 'bold'
+                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 12, // FALTAN grande
+                    padding: '1px 6px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold'
                   }}>FALTAN {remaining}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 26, color: C.navy }}>{total}</span>
-                  <span style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft }}>/ {target}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
+                  <span style={{ fontFamily: F.display, fontSize: 24, color: C.navy }}>{total}</span>
+                  <span style={{ fontFamily: F.body, fontSize: 10, color: C.inkSoft }}>/ {target}</span>
                 </div>
-                <div style={{ height: 7, background: C.creamDark, borderRadius: 999, border: `1.5px solid ${C.navy}`, overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ height: 6, background: C.creamDark, borderRadius: 999, border: `1.2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 6 }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s', borderRadius: 999 }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, letterSpacing: '1px', flexShrink: 0 }}>PTS</div>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
                     onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
                     onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="0" style={{
-                      flex: 1, background: C.white, border: `2.5px solid ${C.navy}`, borderRadius: 8, padding: '6px 8px',
-                      textAlign: 'center', fontFamily: F.display, fontSize: 18, color: C.navy, outline: 'none',
-                      boxShadow: `inset 1.5px 1.5px 0 ${C.creamDark}`, minWidth: 40
+                      flex: 1, background: C.white, border: `2px solid ${C.navy}`, borderRadius: 7, padding: '4px 6px',
+                      textAlign: 'center', fontFamily: F.display, fontSize: 16, color: C.navy, outline: 'none',
+                      boxShadow: `inset 1px 1px 0 ${C.creamDark}`, maxWidth: 55 // Achicado
                   }} />
                   <button 
                     onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }} 
                     style={{
                       background: isBustDisabled ? `${C.red}40` : C.red, 
-                      color: C.white, border: `2.5px solid ${C.navyDark}`, borderRadius: 8,
-                      padding: '8px 10px', cursor: isBustDisabled ? 'default' : 'pointer', 
-                      fontFamily: F.display, fontSize: 9, letterSpacing: '1px',
-                      boxShadow: isBustDisabled ? 'none' : '2px 2px 0 #00000030', 
+                      color: C.white, border: `2px solid ${C.navyDark}`, borderRadius: 7,
+                      padding: '6px 8px', cursor: isBustDisabled ? 'default' : 'pointer', 
+                      fontFamily: F.display, fontSize: 8, letterSpacing: '1px',
+                      boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
                       flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1
                     }}
                   >BUST</button>
@@ -755,71 +672,59 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             );
           })}
         </div>
-        <div style={{ marginTop: 14 }}>
-          <Btn onClick={handleCloseRound} icon={Zap}>AGREGAR RONDA</Btn>
+        <div style={{ marginTop: 12 }}>
+          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>AGREGAR RONDA</Btn>
         </div>
       </>)}
 
       {tab === 'resultados' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {ranked.map((p, i) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
-            
             return (
               <div key={p} style={{ 
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 8px', 
-                background: C.creamLight, borderRadius: 12, borderBottom: `2px solid ${C.navy}10` 
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', 
+                background: C.creamLight, borderRadius: 10, borderBottom: `1.5px solid ${C.navy}10` 
               }}>
                 <RankBadge rank={i + 1} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {i === 0 && total > 0 && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 22, color: C.navy }}>{p}</span> {/* Nombre igual que puntaje actual */}
+                    {i === 0 && total > 0 && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    <span style={{ fontFamily: F.display, fontSize: 21, color: C.navy }}>{p}</span> {/* -1 pt */}
                   </div>
-                  <div style={{ height: 5, background: C.creamDark, borderRadius: 999, marginTop: 4, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
+                  <div style={{ height: 4, background: C.creamDark, borderRadius: 999, marginTop: 3, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.4s' }} />
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: F.display, fontSize: 22, color: C.navy, lineHeight: 1 }}>{total}</div>
+                  <div style={{ fontFamily: F.display, fontSize: 21, color: C.navy, lineHeight: 1 }}>{total}</div> {/* -1 pt */}
                   <div style={{ 
-                    fontFamily: F.display, fontSize: 12, // +2 puntos de tamaño
-                    color: barColor, // Mismo color que la barra
-                    letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 2 
+                    fontFamily: F.display, fontSize: 11, // +2 pts
+                    color: barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 1 
                   }}>FALTAN {remaining}</div>
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{ marginTop: 18 }}>
-          <Btn onClick={() => { setTab('anotar'); }} icon={Zap}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
+        <div style={{ marginTop: 16 }}>
+          <Btn onClick={() => { setTab('anotar'); }} icon={Zap} style={{ padding: '10px' }}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
         </div>
       </>)}
       </div>
 
+      {/* Modales de alertas, empate, opciones se mantienen igual pero dentro de PageBg showEric=false */}
       {modal === 'flippeadorAlert' && flippeadorAlert && (
-          <Overlay>
-            <Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>
-                🔥 ¡ÚLTIMA HORA!
-              </div>
-              <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
-                {flippeadorAlert.type === 'single'
-                  ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! No te olvides de registrar al Flippeador Ganador.</>
-                  : '¡Hay varios jugadores cerca de ganar! ¡Atención al Flippeador Ganador!'}
-              </div>
-              <Btn onClick={() => { 
-                  setModal(null); 
-                  onCloseRound().then(applyCloseRoundResult);
-                }}>
-                ENTENDIDO
-              </Btn>
-            </Card>
-          </Overlay>
-        )}
+        <Overlay><Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
+          <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>🔥 ¡ÚLTIMA HORA!</div>
+          <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
+            {flippeadorAlert.type === 'single' ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar!</> : '¡Hay varios cerca de ganar!'}
+          </div>
+          <Btn onClick={() => { setModal(null); onCloseRound().then(applyCloseRoundResult); }}>ENTENDIDO</Btn>
+        </Card></Overlay>
+      )}
 
       {modal === 'tiebreak' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
@@ -827,12 +732,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <AlertTriangle color={C.yellowDark} size={22} />
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¡HAY EMPATE!</div>
           </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 16, lineHeight: 1.5 }}>
-            Se jugará una ronda extra para desempatar.
-          </div>
-          <Btn onClick={() => { setModal(null); setTab('anotar'); }} style={{ fontSize: 14 }}>
-            CONTINUAR
-          </Btn>
+          <Btn onClick={() => { setModal(null); setTab('anotar'); }} style={{ fontSize: 14 }}>CONTINUAR</Btn>
         </Card></Overlay>
       )}
 
@@ -844,9 +744,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <OptionRow icon={Target} title="MODIFICAR OBJETIVO" subtitle={`Actual: ${target} pts`} onClick={() => setModal('target')} />
-            <OptionRow icon={Edit3} title="MODIFICAR PUNTAJE" subtitle="Corregir una ronda anterior" onClick={() => setModal('selectRound')} />
+            <OptionRow icon={Edit3} title="MODIFICAR PUNTAJE" subtitle="Corregir ronda" onClick={() => setModal('selectRound')} />
             <OptionRow icon={UserPlus} title="AGREGAR JUGADOR" subtitle="Sumar a la partida" onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); }} />
-            <OptionRow icon={RotateCcw} title="RESETEAR PARTIDA" subtitle="Todo a 0, mismos jugadores" onClick={() => setModal('reset')} />
+            <OptionRow icon={RotateCcw} title="RESETEAR PARTIDA" subtitle="Todo a 0" onClick={() => setModal('reset')} />
             <OptionRow icon={X} title="ABANDONAR" subtitle="No se guarda" onClick={() => setModal('confirmAbandon')} danger />
           </div>
           <div style={{ marginTop: 12 }}><Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CERRAR</Btn></div>
@@ -856,66 +756,47 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       {modal === 'target' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>NUEVO OBJETIVO</div>
-          <div style={{ fontFamily: F.body, fontSize: 12, color: C.inkSoft, marginBottom: 16 }}>Actual: <strong>{target}</strong> pts · No reinicia puntajes</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
-              <button key={v} onClick={() => { onChangeTarget(v); setModal(null); }} style={{
-                position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy,
-                border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer',
-                boxShadow: shadow(C.navyDark), fontFamily: F.display,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
-              }}>
-                {badge && <Badge text={badge} />}
-                <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
-                <div style={{ fontSize: 9, letterSpacing: '2px' }}>{v === target ? 'ACTUAL' : 'PTS'}</div>
+            {[200, 300, 400, 500].map(v => (
+              <button key={v} onClick={() => { onChangeTarget(v); setModal(null); }} style={{ position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
+                <div style={{ fontSize: 30 }}>{v}</div>
               </button>
             ))}
           </div>
-          <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
+          <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
         </Card></Overlay>
       )}
 
       {modal === 'selectRound' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>¿QUÉ RONDA CORREGIR?</div>
-          {game.rounds.length === 0 ? (
-            <div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft, padding: '16px 0', textAlign: 'center' }}>No hay rondas cargadas.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
-              {game.rounds.map((r, idx) => (
-                <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{
-                  width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
-                  padding: '10px 12px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-                  boxShadow: '2px 2px 0 #00000010'
-                }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, color: C.navy, flexShrink: 0 }}>{String(idx + 1).padStart(2, '0')}</div>
-                  <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, color: C.inkSoft }}>{game.players.map(p => `${p}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
-                  <Edit3 size={14} color={C.navy} />
-                </button>
-              ))}
-            </div>
-          )}
-          <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
+            {game.rounds.map((r, idx) => (
+              <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>{idx + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left' }}>{game.players.map(p => `${p}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
+                <Edit3 size={14} />
+              </button>
+            ))}
+          </div>
+          <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
         </Card></Overlay>
       )}
 
       {modal === 'editRound' && editingRound !== null && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 16 }}>EDITAR RONDA {String(editingRound + 1).padStart(2, '0')}</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 16 }}>EDITAR RONDA {editingRound + 1}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             {game.players.map(p => (
               <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</div>
-                <input type="text" inputMode="numeric" value={editScores[p] ?? ''}
-                  onChange={(e) => setEditScores({ ...editScores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
-                  style={{ width: 80, background: C.white, border: `3px solid ${C.navy}`, borderRadius: 8, padding: '8px', textAlign: 'center', fontFamily: F.display, fontSize: 18, color: C.navy, outline: 'none' }}
-                />
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 13 }}>{p}</div>
+                <input type="text" inputMode="numeric" value={editScores[p] ?? ''} onChange={(e) => setEditScores({ ...editScores, [p]: e.target.value.replace(/[^0-9]/g, '') })} style={{ width: 80, border: `3px solid ${C.navy}`, borderRadius: 8, padding: '8px', textAlign: 'center', fontFamily: F.display }} />
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => { setModal(null); setEditingRound(null); }} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { const parsed = {}; for (const p of game.players) parsed[p] = parseInt(editScores[p], 10) || 0; onModifyRound(editingRound, parsed); setModal(null); setEditingRound(null); }} style={{ fontSize: 14 }}>GUARDAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
+            <Btn onClick={() => { const parsed = {}; for (const p of game.players) parsed[p] = parseInt(editScores[p], 10) || 0; onModifyRound(editingRound, parsed); setModal(null); }}>GUARDAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -923,10 +804,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       {modal === 'reset' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿RESETEAR?</div></div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>Todo vuelve a 0. Mismos jugadores, objetivo {target} pts.</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger" style={{ fontSize: 14 }}>RESETEAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
+            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger">RESETEAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -934,32 +814,12 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       {modal === 'confirmAbandon' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 999, background: C.red, border: `3px solid ${C.navyDark}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <AlertTriangle size={22} color={C.white} strokeWidth={2.5} />
-            </div>
+            <AlertTriangle size={22} color={C.red} />
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>¿ABANDONAR?</div>
           </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-            Si abandonás la partida se pierden todos los puntos acumulados. Esta partida <strong>no se guarda</strong> en el historial ni en los rankings.
-          </div>
-          <div style={{
-            background: C.creamLight, border: `2px solid ${C.navy}20`, borderRadius: 10,
-            padding: '10px 12px', marginBottom: 16
-          }}>
-            <div style={{ fontFamily: F.display, fontSize: 10, color: C.inkSoft, letterSpacing: '2px', marginBottom: 6 }}>PUNTAJES ACTUALES</div>
-            {game.players.map(p => (
-              <div key={p} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontFamily: F.body, fontSize: 13, color: C.navy }}>
-                <span>{p}</span>
-                <span style={{ fontFamily: F.display }}>{game.totals[p]} pts</span>
-              </div>
-            ))}
-          </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal('options')} variant="secondary" style={{ fontSize: 14 }}>VOLVER</Btn>
-            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger" style={{ fontSize: 14 }}>ABANDONAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">VOLVER</Btn>
+            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger">ABANDONAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -971,180 +831,74 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         return (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>AGREGAR JUGADOR</div>
-          <div style={{ fontFamily: F.display, fontSize: 10, color: C.navy, letterSpacing: '2px', marginBottom: 6 }}>NOMBRE</div>
-          <input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre…"
-            style={{ width: '100%', background: C.white, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '11px 14px', fontFamily: F.body, fontSize: 16, color: C.ink, outline: 'none', marginBottom: suggestions.length > 0 ? 0 : 14, boxSizing: 'border-box' }} />
-          {suggestions.length > 0 && (
-            <div style={{ background: C.white, border: `3px solid ${C.navy}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden', marginBottom: 14 }}>
-              {suggestions.map((s, i) => (
-                <button key={s} onClick={() => { setNewPlayerName(s); }} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px',
-                  background: i % 2 === 0 ? C.creamLight : C.white, border: 'none',
-                  fontFamily: F.body, fontSize: 14, color: C.navy, textAlign: 'left', cursor: 'pointer'
-                }}><Plus size={14} strokeWidth={3} color={C.yellow} /><span style={{ fontWeight: 600 }}>{s}</span></button>
-              ))}
-            </div>
-          )}
-          <div style={{ fontFamily: F.display, fontSize: 10, color: C.navy, letterSpacing: '2px', marginBottom: 6 }}>PUNTOS INICIALES</div>
+          <input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre…" style={{ width: '100%', border: `3px solid ${C.navy}`, borderRadius: 10, padding: '11px 14px', marginBottom: 10 }} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             {['0', 'Minimo'].map(opt => {
               const isMin = opt === 'Minimo';
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
               const isSel = isMin ? newPlayerPoints === 'min' : newPlayerPoints === '0';
               return (
-                <button key={opt} onClick={() => setNewPlayerPoints(isMin ? 'min' : '0')} style={{
-                  flex: 1, background: isSel ? C.navy : C.creamLight, color: isSel ? C.yellow : C.navy,
-                  border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 6px', cursor: 'pointer',
-                  fontFamily: F.display, fontSize: 10, textAlign: 'center', boxShadow: '2px 2px 0 #00000010'
-                }}>
+                <button key={opt} onClick={() => setNewPlayerPoints(isMin ? 'min' : '0')} style={{ flex: 1, background: isSel ? C.navy : C.creamLight, color: isSel ? C.yellow : C.navy, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 6px', fontFamily: F.display, fontSize: 10 }}>
                   <div>{isMin ? 'IGUALAR MENOR' : '0 PTS'}</div>
-                  {isMin && <div style={{ fontFamily: F.body, fontSize: 10, marginTop: 2, opacity: 0.8 }}>({minVal} pts)</div>}
+                  {isMin && <div style={{ fontSize: 10 }}>({minVal} pts)</div>}
                 </button>
               );
             })}
-            <input type="text" inputMode="numeric" value={newPlayerPoints !== '0' && newPlayerPoints !== 'min' ? newPlayerPoints : ''}
-              onChange={(e) => setNewPlayerPoints(e.target.value.replace(/[^0-9]/g, '') || '0')}
-              onFocus={() => { if (newPlayerPoints === '0' || newPlayerPoints === 'min') setNewPlayerPoints(''); }}
-              placeholder="Custom" style={{
-                flex: 1, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
-                padding: '10px 6px', textAlign: 'center', fontFamily: F.display, fontSize: 11, color: C.navy, outline: 'none'
-            }} />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
             <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => {
-              const nm = newPlayerName.trim(); if (!nm || game.players.includes(nm)) return;
+              const nm = newPlayerName.trim();
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
               onAddPlayer(nm, newPlayerPoints === 'min' ? minVal : parseInt(newPlayerPoints, 10) || 0);
               setModal(null);
-            }} style={{ fontSize: 14 }}>AGREGAR</Btn>
+            }}>AGREGAR</Btn>
           </div>
         </Card></Overlay>
         ); })()}
 
-      {modal === 'scoreWarning' && (() => {
-        const suspicious = game.players.filter(p => parseInt(scores[p], 10) >= WARN_SCORE);
-        return (
+      {modal === 'scoreWarning' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 999, background: C.yellow, border: `3px solid ${C.navy}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <AlertTriangle size={22} color={C.navy} strokeWidth={2.5} />
-            </div>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿SEGURO?</div>
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-            {suspicious.length === 1 ? 'Un jugador tiene' : 'Algunos jugadores tienen'} un puntaje muy alto para una sola ronda. Revisá la suma de las cartas:
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {suspicious.map(p => (
-              <div key={p} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                background: `${C.yellow}30`, border: `2px solid ${C.yellow}`, borderRadius: 10,
-                padding: '10px 14px'
-              }}>
-                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
-                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
-              </div>
-            ))}
-          </div>
-          <div style={{
-            background: C.creamLight, border: `2px dashed ${C.navy}30`, borderRadius: 10,
-            padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.inkSoft, lineHeight: 1.5
-          }}>
-            El máximo teórico en Flip 7 es <strong style={{ color: C.navy }}>179 pts</strong> (7 cartas más altas + x2 + todos los modificadores + bonus). Un puntaje de 100+ es posible pero muy raro.
-          </div>
+          <div style={{ fontFamily: F.display, color: C.navy, marginBottom: 10 }}>¿SEGURO?</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 13 }}>CORREGIR</Btn>
-            <Btn onClick={confirmSuspiciousScore} style={{ fontSize: 13 }}>SÍ, ES CORRECTO</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">CORREGIR</Btn>
+            <Btn onClick={confirmSuspiciousScore}>SÍ, ES CORRECTO</Btn>
           </div>
         </Card></Overlay>
-        ); })()}
+      )}
 
-      {modal === 'impossible' && (() => {
-        const impossible = game.players.filter(p => parseInt(scores[p], 10) > MAX_SCORE);
-        return (
+      {modal === 'impossible' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 999, background: C.red, border: `3px solid ${C.navyDark}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <X size={22} color={C.white} strokeWidth={3} />
-            </div>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>IMPOSIBLE</div>
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-            {impossible.length === 1 ? 'Un jugador tiene' : 'Algunos jugadores tienen'} un puntaje que supera el máximo posible del juego:
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {impossible.map(p => (
-              <div key={p} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                background: `${C.red}15`, border: `2px solid ${C.red}`, borderRadius: 10,
-                padding: '10px 14px'
-              }}>
-                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
-                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
-              </div>
-            ))}
-          </div>
-          <div style={{
-            background: `${C.red}10`, border: `2px solid ${C.red}40`, borderRadius: 10,
-            padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.ink, lineHeight: 1.5
-          }}>
-            El puntaje máximo posible en una ronda de Flip 7 es <strong style={{ color: C.red }}>179 puntos</strong> (cartas 6-12 con x2, todos los modificadores y bonus Flip 7). Corregí el puntaje para continuar.
-          </div>
-          <Btn onClick={() => setModal(null)} style={{ fontSize: 14 }}>CORREGIR</Btn>
+          <div style={{ fontFamily: F.display, color: C.red, marginBottom: 10 }}>IMPOSIBLE</div>
+          <Btn onClick={() => setModal(null)}>CORREGIR</Btn>
         </Card></Overlay>
-        ); })()}
-
+      )}
     </PageBg>
   );
 }
 
 function GameOverScreen({ game, onHome }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
-
   useEffect(() => {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-    const t = setTimeout(() => {
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-    }, 250);
+    const t = setTimeout(() => { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }, 250);
     return () => clearTimeout(t);
   }, []);
 
   return (
-    <PageBg>
+    <PageBg showEric={false}>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <div style={{
-          display: 'inline-block', background: C.yellow, border: `4px solid ${C.navy}`,
-          borderRadius: 999, padding: 18, boxShadow: `${shadow()}, 0 0 30px ${C.yellow}50`
-        }}><Trophy size={44} color={C.navy} fill={C.navy} /></div>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.cream, letterSpacing: '5px', marginTop: 16 }}>GANADOR</div>
-        <div style={{
-          fontFamily: F.display, fontSize: 42, color: C.yellow, marginTop: 6,
-          WebkitTextStroke: `2px ${C.navy}`, paintOrder: 'stroke fill',
-          textShadow: `4px 4px 0 ${C.navyDark}`
-        }}>{game.winner.toUpperCase()}</div>
-        <div style={{ fontFamily: F.display, fontSize: 24, color: C.cream, marginTop: 6 }}>{game.finalScores[game.winner]} PTS</div>
+        <div style={{ display: 'inline-block', background: C.yellow, border: `4px solid ${C.navy}`, borderRadius: 999, padding: 18, boxShadow: `${shadow()}, 0 0 30px ${C.yellow}50` }}><Trophy size={44} color={C.navy} fill={C.navy} /></div>
+        <div style={{ fontFamily: F.display, fontSize: 42, color: C.yellow, marginTop: 16, textShadow: `4px 4px 0 ${C.navyDark}` }}>{game.winner.toUpperCase()}</div>
+        <div style={{ fontFamily: F.display, fontSize: 24, color: C.cream }}>{game.finalScores[game.winner]} PTS</div>
       </div>
-      <Card style={{ padding: 14, marginTop: 16, marginBottom: 20 }} glow>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>RESULTADO FINAL</div>
+      <Card style={{ padding: 14, marginBottom: 20 }} glow>
         {ranked.map((p, i) => (
           <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < ranked.length - 1 ? `2px dashed ${C.navy}15` : 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <RankBadge rank={i + 1} />
-              <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</span>
-            </div>
-            <span style={{ fontFamily: F.display, fontSize: 20, color: i === 0 ? C.red : C.navy }}>{game.finalScores[p]}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><RankBadge rank={i + 1} /><span style={{ fontFamily: F.display, fontSize: 14 }}>{p}</span></div>
+            <span style={{ fontFamily: F.display, fontSize: 20 }}>{game.finalScores[p]}</span>
           </div>
         ))}
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: `3px solid ${C.navy}15`, fontFamily: F.display, fontSize: 10, color: C.inkSoft, textAlign: 'center', letterSpacing: '2px' }}>
-          {game.rounds.length} RONDAS · A {game.targetScore ?? 200} PTS
-        </div>
       </Card>
       <Btn onClick={onHome} icon={CardsIcon}>NUEVA PARTIDA</Btn>
     </PageBg>
@@ -1159,49 +913,40 @@ function RankingsScreen({ data, onBack }) {
     { id: 'best', label: 'MEJOR', icon: Crown, sort: (a, b) => b.bestGameScore - a.bestGameScore, value: p => p.bestGameScore, suf: 'pts' },
     { id: 'round', label: 'RONDA', icon: Zap, sort: (a, b) => b.highestRound - a.highestRound, value: p => p.highestRound, suf: 'pts' },
     { id: 'avg', label: 'PROM.', icon: TrendingUp, sort: (a, b) => (b.gamesPlayed ? b.totalPoints / b.gamesPlayed : 0) - (a.gamesPlayed ? a.totalPoints / a.gamesPlayed : 0), value: p => p.gamesPlayed ? Math.round(p.totalPoints / p.gamesPlayed) : 0, suf: 'pts/p' },
-    { id: 'games', label: 'JUGADAS', icon: BarChart3, sort: (a, b) => b.gamesPlayed - a.gamesPlayed, value: p => p.gamesPlayed, suf: '' }
   ];
   const at = tabs.find(t => t.id === tab);
   const sorted = [...players].sort(at.sort);
 
   return (
-    <PageBg>
+    <PageBg showEric={false}>
       <HeaderBar title="RANKINGS" onBack={onBack} />
       <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14, paddingBottom: 4, scrollbarWidth: 'none' }}>
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              background: active ? C.yellow : C.tealDark, color: active ? C.navy : C.cream,
-              border: `3px solid ${active ? C.navy : C.cream}40`, borderRadius: 10, padding: '7px 10px',
-              fontFamily: F.display, fontSize: 10, letterSpacing: '1px', cursor: 'pointer', flexShrink: 0,
-              display: 'flex', alignItems: 'center', gap: 4,
-              boxShadow: active ? shadowSm() : 'none'
-            }}><I size={12} strokeWidth={2.5} /> {t.label}</button>
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ background: active ? C.yellow : C.tealDark, color: active ? C.navy : C.cream, border: `3px solid ${active ? C.navy : C.cream}40`, borderRadius: 10, padding: '7px 10px', fontFamily: F.display, fontSize: 10, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <I size={12} strokeWidth={2.5} /> {t.label}
+            </button>
           );
         })}
       </div>
-      {sorted.length === 0 ? (
-        <Card style={{ padding: 32, textAlign: 'center' }}><div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft }}>No hay partidas aún.</div></Card>
-      ) : (
-        <Card style={{ padding: 8 }}>
-          {sorted.map((p, i) => (
-            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <RankBadge rank={i + 1} />
-                <div>
-                  <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{p.name}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 9, color: C.inkSoft }}>{p.gamesPlayed}p · {p.wins}w</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: F.display, fontSize: 18, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
-                {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft, letterSpacing: '0.5px' }}>{at.suf.toUpperCase()}</div>}
+      <Card style={{ padding: 8 }}>
+        {sorted.map((p, i) => (
+          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 4px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RankBadge rank={i + 1} />
+              <div>
+                <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
+                <div style={{ fontFamily: F.body, fontSize: 9 }}>{p.gamesPlayed}p · {p.wins}w</div>
               </div>
             </div>
-          ))}
-        </Card>
-      )}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: F.display, fontSize: 17, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
+              {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft }}>{at.suf.toUpperCase()}</div>}
+            </div>
+          </div>
+        ))}
+      </Card>
     </PageBg>
   );
 }
@@ -1210,45 +955,36 @@ function HistoryScreen({ data, onBack, onDelete }) {
   const games = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   return (
-    <PageBg>
+    <PageBg showEric={false}>
       <HeaderBar title="HISTORIAL" onBack={onBack} />
-      {games.length === 0 ? (
-        <Card style={{ padding: 32, textAlign: 'center' }}><div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft }}>No hay partidas aún.</div></Card>
-      ) : (<>
-        <div style={{ fontFamily: F.display, fontSize: 10, color: C.cream, letterSpacing: '2px', marginBottom: 10, textAlign: 'center' }}>{games.length} PARTIDAS</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {games.map(g => {
-            const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
-            return (
-              <Card key={g.id} style={{ padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={12} color={C.inkSoft} /><span style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft }}>{fmtDate(g.date)}</span></div>
-                  <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: `2px solid ${C.red}60`, borderRadius: 8, color: C.red, cursor: 'pointer', padding: 4, display: 'flex' }}><Trash2 size={14} strokeWidth={2.5} /></button>
-                </div>
-                {r.map((p, i) => (
-                  <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 6px', background: i === 0 ? `${C.yellow}25` : 'transparent', borderRadius: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {i === 0 ? <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} /> : <span style={{ width: 12, textAlign: 'center', fontFamily: F.body, fontSize: 10, color: C.inkSoft }}>{i + 1}</span>}
-                      <span style={{ fontFamily: F.display, fontSize: 11, color: C.navy }}>{p}</span>
-                    </div>
-                    <span style={{ fontFamily: F.display, fontSize: 14, color: i === 0 ? C.red : C.navy }}>{g.finalScores[p]}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {games.map(g => {
+          const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
+          return (
+            <Card key={g.id} style={{ padding: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 10 }}>{fmtDate(g.date)}</span></div>
+                <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
+              </div>
+              {r.map((p, i) => (
+                <div key={p} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {i === 0 ? <Crown size={10} color={C.yellow} fill={C.yellow} /> : <span style={{ width: 10 }} />}
+                    <span style={{ fontFamily: F.display, fontSize: 11 }}>{p}</span>
                   </div>
-                ))}
-                <div style={{ marginTop: 8, paddingTop: 6, borderTop: `2px dashed ${C.navy}10`, fontFamily: F.display, fontSize: 9, color: C.inkSoft, textAlign: 'center', letterSpacing: '1.5px' }}>
-                  {g.rounds.length} RONDAS · A {g.targetScore ?? 200} PTS
+                  <span style={{ fontFamily: F.display, fontSize: 12 }}>{g.finalScores[p]}</span>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
-      </>)}
+              ))}
+            </Card>
+          );
+        })}
+      </div>
       {confirmDelete && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿BORRAR?</div></div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>Ganador: <strong>{confirmDelete.winner}</strong> · Se quita del ranking.</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>¿BORRAR?</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDelete(null)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
-            <Btn onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} variant="danger" style={{ fontSize: 14 }}>BORRAR</Btn>
+            <Btn onClick={() => setConfirmDelete(null)} variant="secondary">CANCELAR</Btn>
+            <Btn onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} variant="danger">BORRAR</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -1266,21 +1002,14 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
-  
   const wakeLockRef = useRef(null);
 
-  // ARREGLO DEL SCROLL: Forzamos scroll arriba en cada cambio de pantalla
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.body.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [screen]);
 
-  // 1. CARGAR DATOS Y PERSISTENCIA
   useEffect(() => {
     loadData().then(d => { setData(d); setLoading(false); });
-    
-    // Recuperar partida guardada
     const savedGame = localStorage.getItem('flip7_active_game');
     const savedScores = localStorage.getItem('flip7_active_scores');
     if (savedGame && savedScores) {
@@ -1290,7 +1019,6 @@ export default function App() {
     }
   }, []);
 
-  // 2. GUARDAR ESTADO EN LOCALSTORAGE (MECANISMO DE ANTIFREEZE)
   useEffect(() => {
     if (game && screen === 'game') {
       localStorage.setItem('flip7_active_game', JSON.stringify(game));
@@ -1301,13 +1029,10 @@ export default function App() {
     }
   }, [game, scores, screen]);
 
-  // 3. WAKE LOCK (PARA QUE LA PANTALLA NO SE APAGUE)
   useEffect(() => {
     const requestWakeLock = async () => {
       if ('wakeLock' in navigator && screen === 'game') {
-        try {
-          wakeLockRef.current = await navigator.wakeLock.request('screen');
-        } catch (err) { console.error(`${err.name}, ${err.message}`); }
+        try { wakeLockRef.current = await navigator.wakeLock.request('screen'); } catch (err) { console.error(err); }
       }
     };
     requestWakeLock();
@@ -1318,64 +1043,36 @@ export default function App() {
   const startGame = (targetVal) => {
     const newGame = { players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal };
     setGame(newGame);
-    setScores(Object.fromEntries(selected.map(p => [p, '0']))); // Puntajes en 0 por defecto
+    setScores(Object.fromEntries(selected.map(p => [p, '0'])));
     setTargetPickerOpen(false);
     setScreen('game');
   };
 
   const closeRound = async () => {
-    const rs = {}; 
-    for (const p of game.players) { 
-      const n = parseInt(scores[p], 10) || 0; 
-      rs[p] = n; 
-    }
-    
-    const nt = { ...game.totals }; 
-    for (const p of game.players) nt[p] += rs[p];
-    
-    const nr = [...game.rounds, { scores: rs }]; 
-    const t = game.targetScore;
-    
+    const rs = {}; for (const p of game.players) { rs[p] = parseInt(scores[p], 10) || 0; }
+    const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
+    const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
     if (game.players.some(p => nt[p] >= t)) {
       const topScore = Math.max(...game.players.map(p => nt[p]));
       const leaders = game.players.filter(p => nt[p] === topScore);
-      
       if (leaders.length > 1) {
         setGame({ ...game, rounds: nr, totals: nt });
         setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
         return { status: 'tie' };
       }
-      
-      const fin = { 
-        id: `g-${Date.now()}`, 
-        date: new Date().toISOString(), 
-        players: game.players, 
-        rounds: nr, 
-        finalScores: nt, 
-        targetScore: t, 
-        winner: leaders[0] 
-      };
-      
+      const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: leaders[0] };
       const savedGame = await insertGame(fin);
       if (!savedGame) return { status: 'save_error' };
-      
-      const nd = { players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] };
-      setData(nd); 
-      setCompletedGame(savedGame); 
-      setGame(null); 
-      setScreen('gameover');
+      setData({ players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] }); 
+      setCompletedGame(savedGame); setGame(null); setScreen('gameover');
       return { status: 'finished' };
     }
-    
-    setGame({ ...game, rounds: nr, totals: nt }); 
-    setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+    setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
     return { status: 'continued' };
   };
 
   const goHome = () => { 
-    if (game && screen === 'game') {
-        if (!window.confirm("¿Seguro que querés abandonar? Se perderá el progreso.")) return;
-    }
+    if (game && screen === 'game' && !window.confirm("¿Seguro que querés abandonar? Se perderá el progreso.")) return;
     setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); 
   };
 
@@ -1384,39 +1081,20 @@ export default function App() {
     const ng = data.games.filter(g => g.id !== id);
     const stats = recalculateStats(ng);
     const savedNames = await loadSavedPlayerNames();
-    const nd = { players: mergeStatsWithSavedNames(stats, savedNames), games: ng };
-    setData(nd);
+    setData({ players: mergeStatsWithSavedNames(stats, savedNames), games: ng });
   };
 
   const deleteSavedPlayer = async (name) => {
-    if (!name || !data.players[name]) return;
-    const hasGames = data.games.some(g => g.players.includes(name));
-    if (hasGames) return;
-
+    if (!name || !data.players[name] || data.games.some(g => g.players.includes(name))) return;
     await removePlayerName(name);
-    const players = { ...data.players };
-    delete players[name];
     const savedNames = await loadSavedPlayerNames();
-    const nd = { ...data, players: mergeStatsWithSavedNames(recalculateStats(data.games), savedNames) };
-    setData(nd);
+    setData({ ...data, players: mergeStatsWithSavedNames(recalculateStats(data.games), savedNames) });
     setSelected(prev => prev.filter(p => p !== name));
   };
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
   const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
-  
-  const addPlayerMidGame = (name, pts) => { 
-    if (game && !game.players.includes(name)) { 
-      setGame({ 
-        ...game, 
-        players: [...game.players, name], 
-        totals: { ...game.totals, [name]: pts }, 
-        rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) 
-      }); 
-      setScores({ ...scores, [name]: '0' }); 
-    } 
-  };
-
+  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
   const modifyRound = (idx, newScores) => {
     if (!game) return;
     const ur = game.rounds.map((r, i) => i === idx ? { ...r, scores: newScores } : r);
@@ -1425,7 +1103,7 @@ export default function App() {
     setGame({ ...game, rounds: ur, totals: nt });
   };
 
-  if (loading) return <PageBg><div style={{ textAlign: 'center', padding: 60, fontFamily: F.display, color: C.yellow, fontSize: 18 }}>Cargando…</div></PageBg>;
+  if (loading) return <PageBg showEric={false}><div style={{ textAlign: 'center', padding: 60, fontFamily: F.display, color: C.yellow, fontSize: 18 }}>Cargando…</div></PageBg>;
 
   return (
     <>
@@ -1445,20 +1123,11 @@ export default function App() {
         {targetPickerOpen && (
           <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>¿A CUÁNTOS PUNTOS?</div>
-            <div style={{ fontFamily: F.serif, fontStyle: 'italic', fontSize: 13, color: C.inkSoft, marginBottom: 18 }}>Elegí el puntaje objetivo</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
-                <button key={v} onClick={() => startGame(v)} style={{
-                  position: 'relative', 
-                  background: C.yellow,
-                  color: C.navy,
-                  border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer',
-                  boxShadow: shadow(C.navyDark), fontFamily: F.display,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
-                }}>
+                <button key={v} onClick={() => startGame(v)} style={{ position: 'relative', background: C.yellow, color: C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
                   {badge && <Badge text={badge} />}
                   <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
-                  <div style={{ fontSize: 9, letterSpacing: '2px' }}>PTS</div>
                 </button>
               ))}
             </div>
