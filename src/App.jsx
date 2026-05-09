@@ -608,6 +608,21 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const WARN_SCORE = 70;
   const FLIP_NEAR_PTS = 40;
 
+  const computeRoundProjection = () => {
+    const projectedTotals = {};
+    for (const p of game.players) {
+      const roundScore = parseInt(scores[p], 10) || 0;
+      projectedTotals[p] = (game.totals[p] || 0) + roundScore;
+    }
+    const someOneWon = game.players.some(p => projectedTotals[p] >= target);
+    const nearWin = game.players.filter(p => {
+      const pt = projectedTotals[p];
+      const rem = target - pt;
+      return !someOneWon && pt < target && rem > 0 && rem <= FLIP_NEAR_PTS;
+    });
+    return { projectedTotals, someOneWon, nearWin };
+  };
+
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
@@ -638,18 +653,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       return;
     }
 
-    const projectedTotals = {};
-    for (const p of game.players) {
-        const roundScore = parseInt(scores[p], 10) || 0;
-        projectedTotals[p] = (game.totals[p] || 0) + roundScore;
-    }
-
-    const someOneWon = game.players.some(p => projectedTotals[p] >= target);
-    const nearWin = game.players.filter(p => {
-      const pt = projectedTotals[p];
-      const rem = target - pt;
-      return !someOneWon && pt < target && rem > 0 && rem <= FLIP_NEAR_PTS;
-    });
+    const { projectedTotals, someOneWon, nearWin } = computeRoundProjection();
 
     if (nearWin.length > 0 && !someOneWon) {
       if (nearWin.length > 1) {
@@ -670,6 +674,19 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const confirmSuspiciousScore = async () => {
     setScoreWarningConfirmed(true);
     setModal(null);
+    const { projectedTotals, someOneWon, nearWin } = computeRoundProjection();
+    if (nearWin.length > 0 && !someOneWon) {
+      if (nearWin.length > 1) {
+        setFlippeadorAlert({ type: 'multiple' });
+      } else {
+        const name = nearWin[0];
+        const rem = Math.max(0, target - projectedTotals[name]);
+        setFlippeadorAlert({ type: 'single', name, remaining: rem });
+      }
+      setModal('flippeadorAlert');
+      return;
+    }
+    setScoreWarningConfirmed(false);
     const result = await onCloseRound();
     applyCloseRoundResult(result);
     setTimeout(() => setScoreWarningConfirmed(false), 100);
@@ -836,7 +853,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! Alguien se está por convertir en Flippeador Ganador.</>
               : <>¡Hay varios jugadores a {FLIP_NEAR_PTS} puntos o menos del objetivo! Alguien se está por convertir en Flippeador Ganador.</>}
           </div>
-          <Btn onClick={() => { setModal(null); onCloseRound().then(applyCloseRoundResult); }}>ENTENDIDO</Btn>
+          <Btn onClick={() => {
+            setModal(null);
+            setScoreWarningConfirmed(false);
+            onCloseRound().then(applyCloseRoundResult);
+          }}>ENTENDIDO</Btn>
         </Card></Overlay>
       )}
 
