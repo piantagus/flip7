@@ -745,8 +745,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 12, // FALTAN grande
-                    padding: '1px 6px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold'
+                    background: C.yellowDark, color: C.navy, fontFamily: F.display, fontSize: 12,
+                    padding: '1px 6px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold',
+                    boxShadow: `0 1px 0 ${C.yellowDeep}80`
                   }}>FALTAN {remaining}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
@@ -756,14 +757,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ height: 6, background: C.creamDark, borderRadius: 999, border: `1.2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 6 }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s', borderRadius: 999 }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, width: '100%', justifyContent: 'center' }}>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
                     onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
                     onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="0" style={{
-                      flex: 1, minWidth: 0, background: C.white, border: `2px solid ${C.navy}`, borderRadius: 8,
-                      padding: '10px 12px', textAlign: 'center', fontFamily: F.display, fontSize: 18, color: C.navy,
+                      flex: 1, minWidth: 0, height: 36, boxSizing: 'border-box', background: C.white, border: `2px solid ${C.navy}`, borderRadius: 8,
+                      padding: '0 12px', textAlign: 'center', fontFamily: F.display, fontSize: 16, lineHeight: 1, color: C.navy,
                       outline: 'none', boxShadow: `inset 1px 1px 0 ${C.creamDark}`
                   }} />
                   <button 
@@ -772,10 +773,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     style={{
                       background: isBustDisabled ? `${C.red}40` : C.red, 
                       color: C.white, border: `2px solid ${C.navyDark}`, borderRadius: 8,
-                      padding: '10px 12px', cursor: isBustDisabled ? 'default' : 'pointer', 
+                      height: 36, boxSizing: 'border-box', padding: '0 12px', cursor: isBustDisabled ? 'default' : 'pointer', 
                       fontFamily: F.display, fontSize: 9, letterSpacing: '1px',
                       boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
-                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, alignSelf: 'stretch', display: 'flex', alignItems: 'center'
+                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
                   >BUST</button>
                 </div>
@@ -812,8 +813,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: F.display, fontSize: 21, color: C.navy, lineHeight: 1 }}>{total}</div> {/* -1 pt */}
                   <div style={{ 
-                    fontFamily: F.display, fontSize: 11, // +2 pts
-                    color: barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 1 
+                    fontFamily: F.display, fontSize: 11,
+                    color: barColor === C.yellow ? C.yellowDeep : barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 1 
                   }}>FALTAN {remaining}</div>
                 </div>
               </div>
@@ -832,8 +833,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>🔥 ¡ÚLTIMA HORA!</div>
           <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
             {flippeadorAlert.type === 'single'
-              ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! Ojo con el Flippeador.</>
-              : <>¡Hay varios jugadores a {FLIP_NEAR_PTS} puntos o menos del objetivo! Ojo con el Flippeador.</>}
+              ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! Alguien se está por convertir en Flippeador Ganador.</>
+              : <>¡Hay varios jugadores a {FLIP_NEAR_PTS} puntos o menos del objetivo! Alguien se está por convertir en Flippeador Ganador.</>}
           </div>
           <Btn onClick={() => { setModal(null); onCloseRound().then(applyCloseRoundResult); }}>ENTENDIDO</Btn>
         </Card></Overlay>
