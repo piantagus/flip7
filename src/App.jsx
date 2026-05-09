@@ -475,6 +475,22 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   return (
     <PageBg showEric={false}>
       <HeaderBar title="NUEVA PARTIDA" onBack={onBack} />
+
+      {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
+        <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
+          <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>ÚLTIMA PARTIDA</div>
+          <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
+            ¿Repetir los mismos jugadores que la última partida terminada?
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
+            {lastGame.players.join(' · ')}
+          </div>
+          <Btn onClick={() => setSelected([...lastGame.players])} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
+            USAR ESTOS JUGADORES
+          </Btn>
+        </Card>
+      )}
+
       <Card style={{ padding: 14, marginBottom: 12 }}>
         <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>JUGADORES ({selected.length})</div>
         {selected.length === 0 ? (
@@ -589,7 +605,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const ranked = [...game.players].sort((a, b) => game.totals[b] - game.totals[a]);
 
   const MAX_SCORE = 179;
-  const WARN_SCORE = 100;
+  const WARN_SCORE = 70;
+  const FLIP_NEAR_PTS = 40;
 
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
@@ -604,12 +621,18 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   const handleCloseRound = async () => {
-    const impossible = game.players.filter(p => parseInt(scores[p], 10) > MAX_SCORE);
+    const roundPts = (p) => {
+      const raw = scores[p];
+      if (raw === '' || raw === undefined) return 0;
+      const n = parseInt(raw, 10);
+      return isNaN(n) ? 0 : n;
+    };
+    const impossible = game.players.filter(p => roundPts(p) > MAX_SCORE);
     if (impossible.length > 0) {
       setModal('impossible');
       return;
     }
-    const suspicious = game.players.filter(p => parseInt(scores[p], 10) >= WARN_SCORE);
+    const suspicious = game.players.filter(p => roundPts(p) >= WARN_SCORE);
     if (suspicious.length > 0 && !scoreWarningConfirmed) {
       setModal('scoreWarning');
       return;
@@ -622,14 +645,17 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     }
 
     const someOneWon = game.players.some(p => projectedTotals[p] >= target);
-    const threshold = target * 0.85;
-    const closeToWin = game.players.filter(p => projectedTotals[p] >= threshold);
+    const nearWin = game.players.filter(p => {
+      const pt = projectedTotals[p];
+      const rem = target - pt;
+      return !someOneWon && pt < target && rem > 0 && rem <= FLIP_NEAR_PTS;
+    });
 
-    if (closeToWin.length > 0 && !someOneWon) {
-      if (closeToWin.length > 1) {
+    if (nearWin.length > 0 && !someOneWon) {
+      if (nearWin.length > 1) {
         setFlippeadorAlert({ type: 'multiple' });
       } else {
-        const name = closeToWin[0];
+        const name = nearWin[0];
         const rem = Math.max(0, target - projectedTotals[name]);
         setFlippeadorAlert({ type: 'single', name, remaining: rem });
       }
@@ -730,26 +756,26 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ height: 6, background: C.creamDark, borderRadius: 999, border: `1.2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 6 }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s', borderRadius: 999 }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, letterSpacing: '1px', flexShrink: 0 }}>PTS</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center' }}>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
                     onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
                     onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="0" style={{
-                      flex: 1, background: C.white, border: `2px solid ${C.navy}`, borderRadius: 7, padding: '4px 6px',
-                      textAlign: 'center', fontFamily: F.display, fontSize: 16, color: C.navy, outline: 'none',
-                      boxShadow: `inset 1px 1px 0 ${C.creamDark}`, maxWidth: 55 // Achicado
+                      flex: 1, minWidth: 0, background: C.white, border: `2px solid ${C.navy}`, borderRadius: 8,
+                      padding: '10px 12px', textAlign: 'center', fontFamily: F.display, fontSize: 18, color: C.navy,
+                      outline: 'none', boxShadow: `inset 1px 1px 0 ${C.creamDark}`
                   }} />
                   <button 
+                    type="button"
                     onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }} 
                     style={{
                       background: isBustDisabled ? `${C.red}40` : C.red, 
-                      color: C.white, border: `2px solid ${C.navyDark}`, borderRadius: 7,
-                      padding: '6px 8px', cursor: isBustDisabled ? 'default' : 'pointer', 
-                      fontFamily: F.display, fontSize: 8, letterSpacing: '1px',
+                      color: C.white, border: `2px solid ${C.navyDark}`, borderRadius: 8,
+                      padding: '10px 12px', cursor: isBustDisabled ? 'default' : 'pointer', 
+                      fontFamily: F.display, fontSize: 9, letterSpacing: '1px',
                       boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
-                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1
+                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, alignSelf: 'stretch', display: 'flex', alignItems: 'center'
                     }}
                   >BUST</button>
                 </div>
@@ -805,7 +831,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
           <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>🔥 ¡ÚLTIMA HORA!</div>
           <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
-            {flippeadorAlert.type === 'single' ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar!</> : '¡Hay varios cerca de ganar!'}
+            {flippeadorAlert.type === 'single'
+              ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! Ojo con el Flippeador.</>
+              : <>¡Hay varios jugadores a {FLIP_NEAR_PTS} puntos o menos del objetivo! Ojo con el Flippeador.</>}
           </div>
           <Btn onClick={() => { setModal(null); onCloseRound().then(applyCloseRoundResult); }}>ENTENDIDO</Btn>
         </Card></Overlay>
@@ -916,7 +944,27 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         return (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>AGREGAR JUGADOR</div>
-          <input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre…" style={{ width: '100%', border: `3px solid ${C.navy}`, borderRadius: 10, padding: '11px 14px', marginBottom: 10 }} />
+          <input
+            value={newPlayerName}
+            onChange={(e) => setNewPlayerName(e.target.value)}
+            placeholder="Nombre…"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              border: `3px solid ${C.navy}`,
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 10,
+              fontFamily: F.body,
+              fontSize: 16,
+              color: C.ink,
+              WebkitTextSizeAdjust: '100%',
+              touchAction: 'manipulation'
+            }}
+          />
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             {['0', 'Minimo'].map(opt => {
               const isMin = opt === 'Minimo';
@@ -942,22 +990,100 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         </Card></Overlay>
         ); })()}
 
-      {modal === 'scoreWarning' && (
+      {modal === 'scoreWarning' && (() => {
+        const suspicious = game.players.filter(p => {
+          const raw = scores[p];
+          if (raw === '' || raw === undefined) return false;
+          const n = parseInt(raw, 10);
+          return !isNaN(n) && n >= WARN_SCORE;
+        });
+        return (
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
-          <div style={{ fontFamily: F.display, color: C.navy, marginBottom: 10 }}>¿SEGURO?</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 999, background: C.yellow, border: `3px solid ${C.navy}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <AlertTriangle size={22} color={C.navy} strokeWidth={2.5} />
+            </div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿SEGURO?</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
+            {suspicious.length === 1
+              ? 'Un jugador tiene un puntaje muy alto para una sola ronda. Revisá la suma de las cartas:'
+              : 'Algunos jugadores tienen un puntaje muy alto para una sola ronda. Revisá la suma de las cartas:'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {suspicious.map(p => (
+              <div key={p} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: `${C.yellow}30`, border: `2px solid ${C.yellow}`, borderRadius: 10,
+                padding: '10px 14px'
+              }}>
+                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
+                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: C.creamLight, border: `2px dashed ${C.navy}30`, borderRadius: 10,
+            padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.inkSoft, lineHeight: 1.5
+          }}>
+            El máximo teórico en Flip 7 es <strong style={{ color: C.navy }}>179 pts</strong> (7 cartas más altas + x2 + modificadores + bonus). Un puntaje de 70+ es posible pero poco frecuente.
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">CORREGIR</Btn>
-            <Btn onClick={confirmSuspiciousScore}>SÍ, ES CORRECTO</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 13 }}>CORREGIR</Btn>
+            <Btn onClick={confirmSuspiciousScore} style={{ fontSize: 13 }}>SÍ, ES CORRECTO</Btn>
           </div>
         </Card></Overlay>
-      )}
+        );
+      })()}
 
-      {modal === 'impossible' && (
+      {modal === 'impossible' && (() => {
+        const impossible = game.players.filter(p => {
+          const raw = scores[p];
+          if (raw === '' || raw === undefined) return false;
+          const n = parseInt(raw, 10);
+          return !isNaN(n) && n > MAX_SCORE;
+        });
+        return (
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
-          <div style={{ fontFamily: F.display, color: C.red, marginBottom: 10 }}>IMPOSIBLE</div>
-          <Btn onClick={() => setModal(null)}>CORREGIR</Btn>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 999, background: C.red, border: `3px solid ${C.navyDark}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <X size={22} color={C.white} strokeWidth={3} />
+            </div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>IMPOSIBLE</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
+            {impossible.length === 1
+              ? 'Un jugador tiene un puntaje que supera el máximo posible del juego:'
+              : 'Algunos jugadores tienen un puntaje que supera el máximo posible del juego:'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {impossible.map(p => (
+              <div key={p} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: `${C.red}15`, border: `2px solid ${C.red}`, borderRadius: 10,
+                padding: '10px 14px'
+              }}>
+                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
+                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: `${C.red}10`, border: `2px solid ${C.red}40`, borderRadius: 10,
+            padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.ink, lineHeight: 1.5
+          }}>
+            El puntaje máximo posible en una ronda de Flip 7 es <strong style={{ color: C.red }}>179 puntos</strong>. Corregí el puntaje para continuar.
+          </div>
+          <Btn onClick={() => setModal(null)} style={{ fontSize: 14 }}>CORREGIR</Btn>
         </Card></Overlay>
-      )}
+        );
+      })()}
     </PageBg>
   );
 }
@@ -1195,7 +1321,17 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; }
+        html {
+          touch-action: manipulation;
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        body {
+          margin: 0;
+          touch-action: manipulation;
+          overscroll-behavior-x: none;
+          overflow-x: hidden;
+        }
         button { transition: transform 0.08s; }
         button:active { transform: translateY(2px) !important; }
         input:focus { box-shadow: 0 0 0 3px ${C.yellow}60 !important; }
