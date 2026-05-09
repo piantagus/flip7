@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 
@@ -466,7 +466,9 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const handleTryDelete = (p) => {
     const hasGames = data.games.some(g => g.players.includes(p));
     if (hasGames) {
-      setAlertMessage(`No se puede borrar a ${p} porque tiene partidas guardadas en el historial. Si querés proceder, debés borrar esas partidas primero.`);
+      setAlertMessage(
+        `No se puede eliminar a ${p} de jugadores guardados mientras siga apareciendo en el historial. Borrá del historial todas las partidas en las que participó y volvé a intentarlo.`
+      );
     } else {
       setConfirmDeleteSaved(p);
     }
@@ -597,6 +599,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [editScores, setEditScores] = useState({});
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPoints, setNewPlayerPoints] = useState('0');
+  const [newPlayerCustomPts, setNewPlayerCustomPts] = useState('');
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
 
@@ -758,7 +761,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {isLeader && <Crown size={11} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    {isLeader && <Crown size={17} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
                     <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
@@ -880,7 +883,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <OptionRow icon={Target} title="MODIFICAR OBJETIVO" subtitle={`Actual: ${target} pts`} onClick={() => setModal('target')} />
             <OptionRow icon={Edit3} title="MODIFICAR PUNTAJE" subtitle="Corregir ronda" onClick={() => setModal('selectRound')} />
-            <OptionRow icon={UserPlus} title="AGREGAR JUGADOR" subtitle="Sumar a la partida" onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); }} />
+            <OptionRow icon={UserPlus} title="AGREGAR JUGADOR" subtitle="Sumar a la partida" onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); }} />
             <OptionRow icon={RotateCcw} title="RESETEAR PARTIDA" subtitle="Todo a 0" onClick={() => setModal('reset')} />
             <OptionRow icon={X} title="ABANDONAR" subtitle="No se guarda" onClick={() => setModal('confirmAbandon')} danger />
           </div>
@@ -924,8 +927,25 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             {game.players.map(p => (
               <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 13 }}>{p}</div>
-                <input type="text" inputMode="numeric" value={editScores[p] ?? ''} onChange={(e) => setEditScores({ ...editScores, [p]: e.target.value.replace(/[^0-9]/g, '') })} style={{ width: 80, border: `3px solid ${C.navy}`, borderRadius: 8, padding: '8px', textAlign: 'center', fontFamily: F.display }} />
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editScores[p] ?? ''}
+                  onChange={(e) => setEditScores({ ...editScores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
+                  style={{
+                    width: 80,
+                    border: `3px solid ${C.navy}`,
+                    borderRadius: 8,
+                    padding: '8px',
+                    textAlign: 'center',
+                    fontFamily: F.display,
+                    fontSize: 15,
+                    color: C.navy,
+                    background: C.yellow,
+                    outline: 'none',
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -987,25 +1007,73 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               touchAction: 'manipulation'
             }}
           />
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            {['0', 'Minimo'].map(opt => {
-              const isMin = opt === 'Minimo';
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {(() => {
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
-              const isSel = isMin ? newPlayerPoints === 'min' : newPlayerPoints === '0';
+              const btnStyle = (sel) => ({
+                flex: 1,
+                background: sel ? C.navy : C.creamLight,
+                color: sel ? C.yellow : C.navy,
+                border: `3px solid ${C.navy}`,
+                borderRadius: 10,
+                padding: '10px 6px',
+                fontFamily: F.display,
+                cursor: 'pointer',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                lineHeight: 1.15,
+              });
               return (
-                <button key={opt} onClick={() => setNewPlayerPoints(isMin ? 'min' : '0')} style={{ flex: 1, background: isSel ? C.navy : C.creamLight, color: isSel ? C.yellow : C.navy, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 6px', fontFamily: F.display, fontSize: 10 }}>
-                  <div>{isMin ? 'IGUALAR MENOR' : '0 PTS'}</div>
-                  {isMin && <div style={{ fontSize: 10 }}>({minVal} pts)</div>}
-                </button>
+                <>
+                  <button type="button" onClick={() => setNewPlayerPoints('0')} style={btnStyle(newPlayerPoints === '0')}>
+                    <div style={{ fontSize: 12 }}>0 PTS</div>
+                  </button>
+                  <button type="button" onClick={() => setNewPlayerPoints('min')} style={btnStyle(newPlayerPoints === 'min')}>
+                    <div style={{ fontSize: 12 }}>IGUALAR MENOR</div>
+                    <div style={{ fontSize: 11, opacity: 0.9 }}>({minVal} pts)</div>
+                  </button>
+                  <button type="button" onClick={() => setNewPlayerPoints('custom')} style={btnStyle(newPlayerPoints === 'custom')}>
+                    <div style={{ fontSize: 12 }}>CUSTOM</div>
+                  </button>
+                </>
               );
-            })}
+            })()}
           </div>
+          {newPlayerPoints === 'custom' && (
+            <input
+              type="text"
+              inputMode="numeric"
+              value={newPlayerCustomPts}
+              onChange={(e) => setNewPlayerCustomPts(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Puntos iniciales…"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                border: `3px solid ${C.navy}`,
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 14,
+                fontFamily: F.display,
+                fontSize: 16,
+                color: C.navy,
+                background: C.creamLight,
+                textAlign: 'center',
+              }}
+            />
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
             <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => {
               const nm = newPlayerName.trim();
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
-              onAddPlayer(nm, newPlayerPoints === 'min' ? minVal : parseInt(newPlayerPoints, 10) || 0);
+              let pts = 0;
+              if (newPlayerPoints === 'min') pts = minVal;
+              else if (newPlayerPoints === 'custom') pts = Math.max(0, parseInt(newPlayerCustomPts, 10) || 0);
+              onAddPlayer(nm, pts);
               setModal(null);
             }}>AGREGAR</Btn>
           </div>
@@ -1138,11 +1206,28 @@ function GameOverScreen({ game, onHome }) {
   );
 }
 
+function efficaciaPct(p) {
+  if (!p.gamesPlayed) return -1;
+  return (100 * p.wins) / p.gamesPlayed;
+}
+
 function RankingsScreen({ data, onBack }) {
   const [tab, setTab] = useState('wins');
   const players = Object.values(data.players);
   const tabs = [
     { id: 'wins', label: 'GANADAS', icon: Trophy, sort: (a, b) => b.wins - a.wins, value: p => p.wins, suf: '' },
+    {
+      id: 'eff',
+      label: 'EFICAZ',
+      icon: Percent,
+      sort: (a, b) => {
+        const d = efficaciaPct(b) - efficaciaPct(a);
+        if (d !== 0) return d;
+        return b.wins - a.wins;
+      },
+      value: p => (p.gamesPlayed ? Math.round(efficaciaPct(p)) : 0),
+      suf: '%',
+    },
     { id: 'best', label: 'MEJOR', icon: Crown, sort: (a, b) => b.bestGameScore - a.bestGameScore, value: p => p.bestGameScore, suf: 'pts' },
     { id: 'round', label: 'RONDA', icon: Zap, sort: (a, b) => b.highestRound - a.highestRound, value: p => p.highestRound, suf: 'pts' },
     { id: 'avg', label: 'PROM.', icon: TrendingUp, sort: (a, b) => (b.gamesPlayed ? b.totalPoints / b.gamesPlayed : 0) - (a.gamesPlayed ? a.totalPoints / a.gamesPlayed : 0), value: p => p.gamesPlayed ? Math.round(p.totalPoints / p.gamesPlayed) : 0, suf: 'pts/p' },
@@ -1170,12 +1255,27 @@ function RankingsScreen({ data, onBack }) {
               <RankBadge rank={i + 1} />
               <div>
                 <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
-                <div style={{ fontFamily: F.body, fontSize: 9 }}>{p.gamesPlayed}p · {p.wins}w</div>
+                {tab !== 'eff' && (
+                  <div style={{ fontFamily: F.body, fontSize: 9 }}>{p.gamesPlayed}p · {p.wins}w</div>
+                )}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
-              {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft }}>{at.suf.toUpperCase()}</div>}
+              {tab === 'eff' ? (
+                <>
+                  <div style={{ fontFamily: F.display, fontSize: 17, color: p.gamesPlayed ? C.navy : C.inkSoft }}>
+                    {p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : '—'}
+                  </div>
+                  <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, marginTop: 2 }}>
+                    {p.wins} gan. / {p.gamesPlayed} jug.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontFamily: F.display, fontSize: 17, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
+                  {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft }}>{at.suf.toUpperCase()}</div>}
+                </>
+              )}
             </div>
           </div>
         ))}
