@@ -181,8 +181,18 @@ function PageBg({ children }) {
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
       <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '10px 18px 50px', zIndex: 2 }}>
+      <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '10px 18px 20px', zIndex: 2 }}>
         {children}
+        
+        {/* Footer persistente en todas las páginas */}
+        <div style={{ textAlign: 'center', marginTop: 40, paddingBottom: 20 }}>
+          <div style={{ fontFamily: F.serif, fontSize: 13, color: C.navy, lineHeight: 1.8 }}>
+            A game by Eric Olsen
+          </div>
+          <div style={{ color: C.yellow, fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px', textShadow: `1px 1px 0 ${C.navy}80` }}>
+            Supported by @piantapp
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -389,10 +399,6 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
         <Btn onClick={onRankings} variant="secondary" icon={Trophy}>RANKINGS</Btn>
         <Btn onClick={onHistory} variant="secondary" icon={History}>HISTORIAL</Btn>
       </div>
-
-      <div style={{ textAlign: 'center', marginTop: 36, fontFamily: F.serif, fontSize: 12, color: C.tealDeep, lineHeight: 1.8 }}>
-        A game by Eric Olsen<br /><span style={{ color: C.cream, fontFamily: F.display, fontSize: 10, letterSpacing: '1px' }}>Supported by @piantapp</span>
-      </div>
     </PageBg>
   );
 }
@@ -413,16 +419,21 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
     setSelected([...selected, fn]); setName('');
     if (!match) onSavePlayer(fn);
-    
-    setTimeout(() => {
-      window.scrollTo(0, 0);
-    }, 100);
   };
+  
   const remove = (p) => setSelected(selected.filter(x => x !== p));
   const add = (p) => { setSelected([...selected, p]); setName(''); };
 
+  const handleTryStart = () => {
+    // NUEVA VALIDACIÓN: Si hay texto en el input de agregar nuevo
+    if (name.trim() !== '') {
+      setAlertMessage("Hay un nombre pendiente de ingresar en la jugada. Por favor, agregalo con el botón (+) o borrá el texto para continuar.");
+      return;
+    }
+    onStart();
+  };
+
   const handleTryDelete = (p) => {
-    // Verificamos si el jugador tiene partidas en el historial
     const hasGames = data.games.some(g => g.players.includes(p));
     if (hasGames) {
       setAlertMessage(`No se puede borrar a ${p} porque tiene partidas guardadas en el historial. Si querés proceder, debés borrar esas partidas primero.`);
@@ -524,7 +535,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         )}
       </Card>
 
-      <Btn onClick={onStart} disabled={selected.length < 2}>
+      <Btn onClick={handleTryStart} disabled={selected.length < 2}>
         {selected.length < 2 ? `FALTA${selected.length === 0 ? 'N 2 JUGADORES' : ' 1 JUGADOR'}` : 'EMPEZAR'}
       </Btn>
 
@@ -669,7 +680,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               border: `4px solid ${C.navy}`,
               borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
-              fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px',
+              fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', // +1 punto tamaño tab
               cursor: 'pointer',
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
@@ -705,7 +716,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 8,
+                    background: C.yellow, color: C.navy, fontFamily: F.display, fontSize: 12, // FALTAN más grande
                     padding: '2px 7px', borderRadius: 999, letterSpacing: '0.5px',
                     border: `1.2px solid ${C.navy}`, fontWeight: 'bold'
                   }}>FALTAN {remaining}</div>
@@ -765,7 +776,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     {i === 0 && total > 0 && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
+                    <span style={{ fontFamily: F.display, fontSize: 22, color: C.navy }}>{p}</span> {/* Nombre igual que puntaje actual */}
                   </div>
                   <div style={{ height: 5, background: C.creamDark, borderRadius: 999, marginTop: 4, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.4s' }} />
@@ -773,7 +784,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: F.display, fontSize: 22, color: C.navy, lineHeight: 1 }}>{total}</div>
-                  <div style={{ fontFamily: F.display, fontSize: 10, color: C.red, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 2 }}>-{remaining}</div>
+                  <div style={{ 
+                    fontFamily: F.display, fontSize: 12, // +2 puntos de tamaño
+                    color: barColor, // Mismo color que la barra
+                    letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 2 
+                  }}>FALTAN {remaining}</div>
                 </div>
               </div>
             );
@@ -1375,8 +1390,6 @@ export default function App() {
 
   const deleteSavedPlayer = async (name) => {
     if (!name || !data.players[name]) return;
-    // Si tiene partidas, este botón ya no debería ejecutarse por la guardia de la UI, 
-    // pero mantenemos la lógica por seguridad.
     const hasGames = data.games.some(g => g.players.includes(name));
     if (hasGames) return;
 
