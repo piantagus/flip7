@@ -165,6 +165,17 @@ function updatePlayerStats(players, game) {
   return out;
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
+
+/** Cantidad de rondas consecutivas desde la última con puntaje 0 para ese jugador. */
+function trailingZeroStreakRounds(rounds, playerName) {
+  let n = 0;
+  for (let i = rounds.length - 1; i >= 0; i--) {
+    const s = rounds[i]?.scores?.[playerName] ?? 0;
+    if (s !== 0) break;
+    n++;
+  }
+  return n;
+}
 function fmtDate(iso) {
   if (!iso) return '';
   try { const d = new Date(iso); return `${d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`; } catch { return ''; }
@@ -592,7 +603,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   );
 }
 
-function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, existingPlayers }) {
+function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onGrantMotivationBonus, existingPlayers }) {
   const [tab, setTab] = useState('anotar');
   const [modal, setModal] = useState(null); 
   const [editingRound, setEditingRound] = useState(null);
@@ -602,6 +613,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [newPlayerCustomPts, setNewPlayerCustomPts] = useState('');
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
+  const [zeroStreakPopup, setZeroStreakPopup] = useState(null);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -626,6 +638,19 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     return { projectedTotals, someOneWon, nearWin };
   };
 
+  const maybeOpenZeroStreakAfterRound = (g) => {
+    if (!g?.rounds?.length || !g.players?.length) return;
+    const streak = (p) => trailingZeroStreakRounds(g.rounds, p);
+    const admin = g.players.filter(p => streak(p) === 6);
+    const joke = g.players.filter(p => streak(p) === 5);
+    const motivation = g.players.filter(p => streak(p) === 4);
+    const rules = g.players.filter(p => streak(p) === 3);
+    if (admin.length) setZeroStreakPopup({ kind: 'sixStreak', players: admin });
+    else if (joke.length) setZeroStreakPopup({ kind: 'fiveStreak', players: joke });
+    else if (motivation.length) setZeroStreakPopup({ kind: 'motivation', players: motivation });
+    else if (rules.length) setZeroStreakPopup({ kind: 'rules', players: rules });
+  };
+
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
@@ -635,6 +660,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     }
     if (result?.status === 'continued' || result?.status === 'finished') {
       setTab('resultados');
+    }
+    if (result?.status === 'continued' && result.gameAfter) {
+      maybeOpenZeroStreakAfterRound(result.gameAfter);
     }
   };
 
@@ -870,7 +898,82 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <AlertTriangle color={C.yellowDark} size={22} />
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¡HAY EMPATE!</div>
           </div>
-          <Btn onClick={() => { setModal(null); setTab('anotar'); }} style={{ fontSize: 14 }}>CONTINUAR</Btn>
+          <Btn onClick={() => {
+            setModal(null);
+            setTab('anotar');
+            maybeOpenZeroStreakAfterRound(game);
+          }} style={{ fontSize: 14 }}>CONTINUAR</Btn>
+        </Card></Overlay>
+      )}
+
+      {zeroStreakPopup?.kind === 'rules' && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 999, background: C.yellow, border: `3px solid ${C.navy}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <AlertTriangle size={22} color={C.navy} strokeWidth={2.5} />
+            </div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿TODO BIEN?</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
+            {zeroStreakPopup.players.length === 1 ? (
+              <>Lleva <strong style={{ color: C.navy }}>3 manos seguidas</strong> sin sumar puntos: <strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong>. ¿Conoce las reglas de Flip 7? Puede ser bust, mala racha… o un buen momento para repasar cómo se anotan los puntos.</>
+            ) : (
+              <>Van <strong style={{ color: C.navy }}>3 manos seguidas</strong> sin sumar puntos: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>. ¿Conocen las reglas? Si no suman puntos en varias rondas, conviene repasar cómo se anotan.</>
+            )}
+          </div>
+          <Btn onClick={() => setZeroStreakPopup(null)}>ENTENDIDO</Btn>
+        </Card></Overlay>
+      )}
+
+      {zeroStreakPopup?.kind === 'motivation' && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>MODO MOTIVACIÓN</div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
+            {zeroStreakPopup.players.length === 1 ? (
+              <><strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> lleva <strong>4 manos seguidas</strong> en cero.</>
+            ) : (
+              <>Llevan <strong>4 manos seguidas</strong> en cero: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>.</>
+            )}
+            {' '}¿Quieren <strong>regalar 10 puntos</strong> a {zeroStreakPopup.players.length === 1 ? 'ese jugador' : 'esos jugadores'} como ayuda, o <strong>seguir así</strong> y dejarlos atrás?
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Btn onClick={() => {
+              onGrantMotivationBonus(zeroStreakPopup.players);
+              setZeroStreakPopup(null);
+            }}>REGALAR 10 PTS (MOTIVACIÓN)</Btn>
+            <Btn onClick={() => setZeroStreakPopup(null)} variant="secondary">SEGUIR ASÍ, SIN REGALO</Btn>
+          </div>
+        </Card></Overlay>
+      )}
+
+      {zeroStreakPopup?.kind === 'fiveStreak' && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>¿EN SERIO? 😅</div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
+            {zeroStreakPopup.players.length === 1 ? (
+              <><strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> lleva <strong>5 manos seguidas</strong> sin sumar un punto. ¿De verdad saben las reglas o están ahí nomás perdiendo el tiempo? <em>(A modo de broma… o no.)</em></>
+            ) : (
+              <>Van <strong>5 manos seguidas</strong> en cero: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>. ¿De verdad saben las reglas o están perdiendo el tiempo? <em>(A modo de broma… o no.)</em></>
+            )}
+          </div>
+          <Btn onClick={() => setZeroStreakPopup(null)}>JAJA, ENTENDIDO</Btn>
+        </Card></Overlay>
+      )}
+
+      {zeroStreakPopup?.kind === 'sixStreak' && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%', border: `3px solid ${C.navy}` }}>
+          <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>ADMINISTRACIÓN</div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.55 }}>
+            Desde la administración recomendamos que {zeroStreakPopup.players.length === 1 ? (
+              <>el jugador <strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> se retire del juego para no pasar más vergüenza.</>
+            ) : (
+              <>los jugadores <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong> se retiren del juego para no pasar más vergüenza.</>
+            )}
+          </div>
+          <Btn onClick={() => setZeroStreakPopup(null)} variant="secondary">TOMO NOTA</Btn>
         </Card></Overlay>
       )}
 
@@ -1385,13 +1488,14 @@ export default function App() {
     const rs = {}; for (const p of game.players) { rs[p] = parseInt(scores[p], 10) || 0; }
     const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
     const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
+    const gameAfter = { ...game, rounds: nr, totals: nt };
     if (game.players.some(p => nt[p] >= t)) {
       const topScore = Math.max(...game.players.map(p => nt[p]));
       const leaders = game.players.filter(p => nt[p] === topScore);
       if (leaders.length > 1) {
-        setGame({ ...game, rounds: nr, totals: nt });
+        setGame(gameAfter);
         setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
-        return { status: 'tie' };
+        return { status: 'tie', gameAfter };
       }
       const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: leaders[0] };
       const savedGame = await insertGame(fin);
@@ -1400,8 +1504,18 @@ export default function App() {
       setCompletedGame(savedGame); setGame(null); setScreen('gameover');
       return { status: 'finished' };
     }
-    setGame({ ...game, rounds: nr, totals: nt }); setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
-    return { status: 'continued' };
+    setGame(gameAfter); setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+    return { status: 'continued', gameAfter };
+  };
+
+  const grantMotivationBonus = (names) => {
+    if (!game || !names?.length) return;
+    const setN = new Set(names);
+    const bonusScores = Object.fromEntries(game.players.map(p => [p, setN.has(p) ? 10 : 0]));
+    const newRounds = [...game.rounds, { scores: bonusScores }];
+    const nt = { ...game.totals };
+    for (const p of game.players) nt[p] += bonusScores[p];
+    setGame({ ...game, rounds: newRounds, totals: nt });
   };
 
   const goHome = () => { 
@@ -1478,7 +1592,7 @@ export default function App() {
           </Card></Overlay>
         )}
       </>)}
-      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} existingPlayers={Object.keys(data.players)} />}
+      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onGrantMotivationBonus={grantMotivationBonus} existingPlayers={Object.keys(data.players)} />}
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} />}
       {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} />}
       {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} />}
