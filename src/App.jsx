@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent, Languages } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
+import { Tx } from './i18n.js';
 
 const SUPABASE_URL = 'https://bztyusclkfsydrrbpdey.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6dHl1c2Nsa2ZzeWRycmJwZGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk1NjEsImV4cCI6MjA5MzUxNTU2MX0.on73TbG44Xqsu6D6FEtgUaILhKikdZlCO9kExqHBl8g';
@@ -166,19 +167,13 @@ function updatePlayerStats(players, game) {
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
 
-/** Cantidad de rondas consecutivas desde la última con puntaje 0 para ese jugador. */
-function trailingZeroStreakRounds(rounds, playerName) {
-  let n = 0;
-  for (let i = rounds.length - 1; i >= 0; i--) {
-    const s = rounds[i]?.scores?.[playerName] ?? 0;
-    if (s !== 0) break;
-    n++;
-  }
-  return n;
-}
-function fmtDate(iso) {
+function fmtDate(iso, lang = 'es') {
   if (!iso) return '';
-  try { const d = new Date(iso); return `${d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`; } catch { return ''; }
+  try {
+    const loc = lang === 'en' ? 'en-US' : 'es-AR';
+    const d = new Date(iso);
+    return `${d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`;
+  } catch { return ''; }
 }
 
 // ═══════ DESIGN ATOMS ═══════
@@ -377,7 +372,8 @@ function RankBadge({ rank }) {
 
 // ═══════ SCREENS ═══════
 
-function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
+function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx }) {
+  const [langOpen, setLangOpen] = useState(false);
   return (
     <PageBg showEric={true}>
       <div style={{ textAlign: 'center', padding: '16px 0 28px' }}>
@@ -427,26 +423,38 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory }) {
           <div style={{ textAlign: 'center', padding: 8 }}>
             <Trophy size={22} color={C.yellow} fill={C.yellow} style={{ marginBottom: 4 }} />
             <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy }}>{data.games.length}</div>
-            <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, letterSpacing: '2px' }}>PARTIDAS</div>
+            <div style={{ fontFamily: F.display, fontSize: 12, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.2 }}>{tx('home_stat_games')}</div>
           </div>
           <div style={{ textAlign: 'center', padding: 8 }}>
             <Users size={22} color={C.yellow} strokeWidth={2.5} style={{ marginBottom: 4 }} />
             <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy }}>{Object.keys(data.players).length}</div>
-            <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, letterSpacing: '2px' }}>JUGADORES</div>
+            <div style={{ fontFamily: F.display, fontSize: 12, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.2 }}>{tx('home_stat_players')}</div>
           </div>
         </div>
       </Card>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
-        <Btn onClick={onNewGame} icon={CardsIcon}>NUEVA PARTIDA</Btn>
-        <Btn onClick={onRankings} variant="secondary" icon={Trophy}>RANKINGS</Btn>
-        <Btn onClick={onHistory} variant="secondary" icon={History}>HISTORIAL</Btn>
+        <Btn onClick={onNewGame} icon={CardsIcon}>{tx('home_new_game')}</Btn>
+        <Btn onClick={onRankings} variant="secondary" icon={Trophy}>{tx('home_rankings')}</Btn>
+        <Btn onClick={onHistory} variant="secondary" icon={History}>{tx('home_history')}</Btn>
+        <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages}>{tx('home_language')}</Btn>
       </div>
+
+      {langOpen && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('home_lang_title')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Btn onClick={() => { setLang('es'); setLangOpen(false); }} variant={lang === 'es' ? undefined : 'secondary'}>{tx('home_lang_es')}</Btn>
+            <Btn onClick={() => { setLang('en'); setLangOpen(false); }} variant={lang === 'en' ? undefined : 'secondary'}>{tx('home_lang_en')}</Btn>
+          </div>
+          <div style={{ marginTop: 12 }}><Btn onClick={() => setLangOpen(false)} variant="secondary">{tx('setup_cancel')}</Btn></div>
+        </Card></Overlay>
+      )}
     </PageBg>
   );
 }
 
-function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer }) {
+function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer, tx }) {
   const [name, setName] = useState('');
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
@@ -468,7 +476,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
   const handleTryStart = () => {
     if (name.trim() !== '') {
-      setAlertMessage("Hay un nombre pendiente de ingresar en la jugada. Por favor, agregalo con el botón (+) o borrá el texto para continuar.");
+      setAlertMessage(tx('setup_pending'));
       return;
     }
     onStart();
@@ -477,9 +485,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const handleTryDelete = (p) => {
     const hasGames = data.games.some(g => g.players.includes(p));
     if (hasGames) {
-      setAlertMessage(
-        `No se puede eliminar a ${p} de jugadores guardados mientras siga apareciendo en el historial. Borrá del historial todas las partidas en las que participó y volvé a intentarlo.`
-      );
+      setAlertMessage(tx('setup_del_block', { name: p }));
     } else {
       setConfirmDeleteSaved(p);
     }
@@ -487,27 +493,27 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
   return (
     <PageBg showEric={false}>
-      <HeaderBar title="NUEVA PARTIDA" onBack={onBack} />
+      <HeaderBar title={tx('setup_title')} onBack={onBack} />
 
       {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
-          <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>ÚLTIMA PARTIDA</div>
+          <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>{tx('setup_last')}</div>
           <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
-            ¿Repetir los mismos jugadores que la última partida terminada?
+            {tx('setup_last_q')}
           </div>
           <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
             {lastGame.players.join(' · ')}
           </div>
           <Btn onClick={() => setSelected([...lastGame.players])} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
-            USAR ESTOS JUGADORES
+            {tx('setup_use')}
           </Btn>
         </Card>
       )}
 
       <Card style={{ padding: 14, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>JUGADORES ({selected.length})</div>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_players')} ({selected.length})</div>
         {selected.length === 0 ? (
-          <div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft, fontSize: 14, padding: '8px 0' }}>Sumá al menos 2 jugadores.</div>
+          <div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft, fontSize: 14, padding: '8px 0' }}>{tx('setup_two')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {selected.map((p, i) => (
@@ -527,7 +533,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
       {available.length > 0 && (
         <Card style={{ padding: 14, marginBottom: 12 }}>
-          <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>GUARDADOS</div>
+          <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_saved')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {available.map(p => (
               <div key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -553,10 +559,10 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       )}
 
       <Card style={{ padding: 14, marginBottom: 14 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>AGREGAR NUEVO</div>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_add_new')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addNew(); }}
-            placeholder="Nombre…" style={{
+            placeholder={tx('setup_ph_name')} style={{
               flex: 1, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '11px 14px',
               fontFamily: F.body, fontSize: 16, color: C.ink, outline: 'none', boxShadow: `inset 2px 2px 0 ${C.creamDark}`
           }} />
@@ -568,21 +574,21 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       </Card>
 
       <Btn onClick={handleTryStart} disabled={selected.length < 2}>
-        {selected.length < 2 ? `FALTA${selected.length === 0 ? 'N 2 JUGADORES' : ' 1 JUGADOR'}` : 'EMPEZAR'}
+        {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
       </Btn>
 
       {confirmDeleteSaved && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <AlertTriangle color={C.red} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿SEGURO?</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('setup_sure')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>
-            Vas a borrar a <strong>{confirmDeleteSaved}</strong> de jugadores guardados.
+            {tx('setup_delete_confirm', { name: confirmDeleteSaved })}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary">CANCELAR</Btn>
-            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger">BORRAR</Btn>
+            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger">{tx('setup_delete')}</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -591,19 +597,19 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <AlertTriangle color={C.yellowDark} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>AVISO</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('setup_notice')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
             {alertMessage}
           </div>
-          <Btn onClick={() => setAlertMessage(null)}>ENTENDIDO</Btn>
+          <Btn onClick={() => setAlertMessage(null)}>{tx('setup_ok')}</Btn>
         </Card></Overlay>
       )}
     </PageBg>
   );
 }
 
-function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onGrantMotivationBonus, existingPlayers }) {
+function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, existingPlayers, tx, lang }) {
   const [tab, setTab] = useState('anotar');
   const [modal, setModal] = useState(null); 
   const [editingRound, setEditingRound] = useState(null);
@@ -613,7 +619,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [newPlayerCustomPts, setNewPlayerCustomPts] = useState('');
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
-  const [zeroStreakPopup, setZeroStreakPopup] = useState(null);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -638,19 +643,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     return { projectedTotals, someOneWon, nearWin };
   };
 
-  const maybeOpenZeroStreakAfterRound = (g) => {
-    if (!g?.rounds?.length || !g.players?.length) return;
-    const streak = (p) => trailingZeroStreakRounds(g.rounds, p);
-    const admin = g.players.filter(p => streak(p) === 6);
-    const joke = g.players.filter(p => streak(p) === 5);
-    const motivation = g.players.filter(p => streak(p) === 4);
-    const rules = g.players.filter(p => streak(p) === 3);
-    if (admin.length) setZeroStreakPopup({ kind: 'sixStreak', players: admin });
-    else if (joke.length) setZeroStreakPopup({ kind: 'fiveStreak', players: joke });
-    else if (motivation.length) setZeroStreakPopup({ kind: 'motivation', players: motivation });
-    else if (rules.length) setZeroStreakPopup({ kind: 'rules', players: rules });
-  };
-
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
@@ -660,9 +652,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     }
     if (result?.status === 'continued' || result?.status === 'finished') {
       setTab('resultados');
-    }
-    if (result?.status === 'continued' && result.gameAfter) {
-      maybeOpenZeroStreakAfterRound(result.gameAfter);
     }
   };
 
@@ -731,11 +720,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
             padding: '6px 14px', boxShadow: shadowSm()
           }}>
-            <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>RONDA</div>
+            <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>{tx('game_round')}</div>
             <div style={{ fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 }}>{String(roundNum).padStart(2, '0')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 11, color: C.cream }}>
-            OBJETIVO<br /><span style={{ fontFamily: F.display, fontSize: 18, color: C.yellow }}>{target}</span> <span style={{ fontSize: 10, color: C.cream }}>PTS</span>
+            {tx('game_goal')}<br /><span style={{ fontFamily: F.display, fontSize: 18, color: C.yellow }}>{target}</span> <span style={{ fontSize: 10, color: C.cream }}>{tx('game_pts')}</span>
           </div>
         </div>
         <button onClick={() => setModal('options')} style={{
@@ -743,14 +732,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           padding: '12px 18px', cursor: 'pointer', boxShadow: shadowSm(),
           fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px', color: C.navy,
           display: 'flex', alignItems: 'center', gap: 5
-        }}><Settings size={15} strokeWidth={2.5} /> OPCIONES</button>
+        }}><Settings size={15} strokeWidth={2.5} /> {tx('game_options')}</button>
       </div>
 
       <div style={{ display: 'flex', gap: 0, marginBottom: -4, position: 'relative', zIndex: 3 }}>
-        {[{ id: 'anotar', label: `RONDA ${String(roundNum).padStart(2, '0')}` }, { id: 'resultados', label: 'RANKING' }].map(t => {
-          const active = tab === t.id;
+        {[{ id: 'anotar', label: `${tx('game_round')} ${String(roundNum).padStart(2, '0')}` }, { id: 'resultados', label: tx('game_ranking') }].map((tb) => {
+          const active = tab === tb.id;
           return (
-            <button key={t.id} onClick={() => { setTab(t.id); }} style={{
+            <button key={tb.id} onClick={() => { setTab(tb.id); }} style={{
               flex: 1, padding: '12px 10px',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.cream,
@@ -762,7 +751,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
               boxShadow: active ? 'none' : `inset 0 -3px 0 ${C.tealShadow}`,
-            }}>{t.label}</button>
+            }}>{tb.label}</button>
           );
         })}
       </div>
@@ -796,7 +785,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     background: C.yellowDark, color: C.navy, fontFamily: F.display, fontSize: 12,
                     padding: '1px 6px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold',
                     boxShadow: `0 1px 0 ${C.yellowDeep}80`
-                  }}>FALTAN {remaining}</div>
+                  }}>{tx('game_faltan')} {remaining}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
                   <span style={{ fontFamily: F.display, fontSize: 24, color: C.navy }}>{total}</span>
@@ -826,14 +815,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
                       flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
-                  >BUST</button>
+                  >{tx('game_bust')}</button>
                 </div>
               </div>
             );
           })}
         </div>
         <div style={{ marginTop: 12 }}>
-          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>AGREGAR RONDA</Btn>
+          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
         </div>
       </>)}
 
@@ -863,14 +852,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   <div style={{ 
                     fontFamily: F.display, fontSize: 11,
                     color: barColor === C.yellow ? C.yellowDeep : barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 1 
-                  }}>FALTAN {remaining}</div>
+                  }}>{tx('game_faltan')} {remaining}</div>
                 </div>
               </div>
             );
           })}
         </div>
         <div style={{ marginTop: 16 }}>
-          <Btn onClick={() => { setTab('anotar'); }} icon={Zap} style={{ padding: '10px' }}>ANOTAR RONDA {String(roundNum).padStart(2, '0')}</Btn>
+          <Btn onClick={() => { setTab('anotar'); }} icon={Zap} style={{ padding: '10px' }}>{tx('game_score_round')} {String(roundNum).padStart(2, '0')}</Btn>
         </div>
       </>)}
       </div>
@@ -878,17 +867,17 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       {/* Modales de alertas, empate, opciones se mantienen igual pero dentro de PageBg showEric=false */}
       {modal === 'flippeadorAlert' && flippeadorAlert && (
         <Overlay><Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
-          <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>🔥 ¡ÚLTIMA HORA!</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>{tx('game_flip_title')}</div>
           <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
             {flippeadorAlert.type === 'single'
-              ? <>¡<span style={{ color: C.red }}>{flippeadorAlert.name}</span> está a solo {flippeadorAlert.remaining} puntos de ganar! Alguien se está por convertir en Flippeador Ganador.</>
-              : <>¡Hay varios jugadores a {FLIP_NEAR_PTS} puntos o menos del objetivo! Alguien se está por convertir en Flippeador Ganador.</>}
+              ? <>{lang === 'es' ? '¡' : ''}<span style={{ color: C.red }}>{flippeadorAlert.name}</span> {tx('game_flip_single_rest', { n: flippeadorAlert.remaining })}</>
+              : tx('game_flip_multi', { m: FLIP_NEAR_PTS })}
           </div>
           <Btn onClick={() => {
             setModal(null);
             setScoreWarningConfirmed(false);
             onCloseRound().then(applyCloseRoundResult);
-          }}>ENTENDIDO</Btn>
+          }}>{tx('game_understood')}</Btn>
         </Card></Overlay>
       )}
 
@@ -896,84 +885,12 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <AlertTriangle color={C.yellowDark} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¡HAY EMPATE!</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_tie')}</div>
           </div>
           <Btn onClick={() => {
             setModal(null);
             setTab('anotar');
-            maybeOpenZeroStreakAfterRound(game);
-          }} style={{ fontSize: 14 }}>CONTINUAR</Btn>
-        </Card></Overlay>
-      )}
-
-      {zeroStreakPopup?.kind === 'rules' && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 999, background: C.yellow, border: `3px solid ${C.navy}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <AlertTriangle size={22} color={C.navy} strokeWidth={2.5} />
-            </div>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿TODO BIEN?</div>
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
-            {zeroStreakPopup.players.length === 1 ? (
-              <>Lleva <strong style={{ color: C.navy }}>3 manos seguidas</strong> sin sumar puntos: <strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong>. ¿Conoce las reglas de Flip 7? Puede ser bust, mala racha… o un buen momento para repasar cómo se anotan los puntos.</>
-            ) : (
-              <>Van <strong style={{ color: C.navy }}>3 manos seguidas</strong> sin sumar puntos: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>. ¿Conocen las reglas? Si no suman puntos en varias rondas, conviene repasar cómo se anotan.</>
-            )}
-          </div>
-          <Btn onClick={() => setZeroStreakPopup(null)}>ENTENDIDO</Btn>
-        </Card></Overlay>
-      )}
-
-      {zeroStreakPopup?.kind === 'motivation' && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>MODO MOTIVACIÓN</div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
-            {zeroStreakPopup.players.length === 1 ? (
-              <><strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> lleva <strong>4 manos seguidas</strong> en cero.</>
-            ) : (
-              <>Llevan <strong>4 manos seguidas</strong> en cero: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>.</>
-            )}
-            {' '}¿Quieren <strong>regalar 10 puntos</strong> a {zeroStreakPopup.players.length === 1 ? 'ese jugador' : 'esos jugadores'} como ayuda, o <strong>seguir así</strong> y dejarlos atrás?
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <Btn onClick={() => {
-              onGrantMotivationBonus(zeroStreakPopup.players);
-              setZeroStreakPopup(null);
-            }}>REGALAR 10 PTS (MOTIVACIÓN)</Btn>
-            <Btn onClick={() => setZeroStreakPopup(null)} variant="secondary">SEGUIR ASÍ, SIN REGALO</Btn>
-          </div>
-        </Card></Overlay>
-      )}
-
-      {zeroStreakPopup?.kind === 'fiveStreak' && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>¿EN SERIO? 😅</div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.5 }}>
-            {zeroStreakPopup.players.length === 1 ? (
-              <><strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> lleva <strong>5 manos seguidas</strong> sin sumar un punto. ¿De verdad saben las reglas o están ahí nomás perdiendo el tiempo? <em>(A modo de broma… o no.)</em></>
-            ) : (
-              <>Van <strong>5 manos seguidas</strong> en cero: <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong>. ¿De verdad saben las reglas o están perdiendo el tiempo? <em>(A modo de broma… o no.)</em></>
-            )}
-          </div>
-          <Btn onClick={() => setZeroStreakPopup(null)}>JAJA, ENTENDIDO</Btn>
-        </Card></Overlay>
-      )}
-
-      {zeroStreakPopup?.kind === 'sixStreak' && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%', border: `3px solid ${C.navy}` }}>
-          <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>ADMINISTRACIÓN</div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.55 }}>
-            Desde la administración recomendamos que {zeroStreakPopup.players.length === 1 ? (
-              <>el jugador <strong style={{ color: C.red }}>{zeroStreakPopup.players[0]}</strong> se retire del juego para no pasar más vergüenza.</>
-            ) : (
-              <>los jugadores <strong style={{ color: C.red }}>{zeroStreakPopup.players.join(' · ')}</strong> se retiren del juego para no pasar más vergüenza.</>
-            )}
-          </div>
-          <Btn onClick={() => setZeroStreakPopup(null)} variant="secondary">TOMO NOTA</Btn>
+          }} style={{ fontSize: 14 }}>{tx('game_continue')}</Btn>
         </Card></Overlay>
       )}
 
@@ -981,22 +898,22 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 18, maxWidth: 340, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <Settings size={20} color={C.navy} strokeWidth={2.5} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>OPCIONES</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_opt_h')}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <OptionRow icon={Target} title="MODIFICAR OBJETIVO" subtitle={`Actual: ${target} pts`} onClick={() => setModal('target')} />
-            <OptionRow icon={Edit3} title="MODIFICAR PUNTAJE" subtitle="Corregir ronda" onClick={() => setModal('selectRound')} />
-            <OptionRow icon={UserPlus} title="AGREGAR JUGADOR" subtitle="Sumar a la partida" onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); }} />
-            <OptionRow icon={RotateCcw} title="RESETEAR PARTIDA" subtitle="Todo a 0" onClick={() => setModal('reset')} />
-            <OptionRow icon={X} title="ABANDONAR" subtitle="No se guarda" onClick={() => setModal('confirmAbandon')} danger />
+            <OptionRow icon={Target} title={tx('game_opt_target')} subtitle={tx('game_opt_target_sub', { n: target })} onClick={() => setModal('target')} />
+            <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
+            <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); }} />
+            <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => setModal('reset')} />
+            <OptionRow icon={X} title={tx('game_opt_leave')} subtitle={tx('game_opt_leave_sub')} onClick={() => setModal('confirmAbandon')} danger />
           </div>
-          <div style={{ marginTop: 12 }}><Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>CERRAR</Btn></div>
+          <div style={{ marginTop: 12 }}><Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>{tx('game_close')}</Btn></div>
         </Card></Overlay>
       )}
 
       {modal === 'target' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>NUEVO OBJETIVO</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('game_new_target')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             {[200, 300, 400, 500].map(v => (
               <button key={v} onClick={() => { onChangeTarget(v); setModal(null); }} style={{ position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
@@ -1004,13 +921,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </button>
             ))}
           </div>
-          <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
+          <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
       {modal === 'selectRound' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>¿QUÉ RONDA CORREGIR?</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_which_round')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
             {game.rounds.map((r, idx) => (
               <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1020,13 +937,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </button>
             ))}
           </div>
-          <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
+          <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
       {modal === 'editRound' && editingRound !== null && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 16 }}>EDITAR RONDA {editingRound + 1}</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 16 }}>{tx('game_edit_round')} {editingRound + 1}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             {game.players.map(p => (
               <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1053,18 +970,18 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
-            <Btn onClick={() => { const parsed = {}; for (const p of game.players) parsed[p] = parseInt(editScores[p], 10) || 0; onModifyRound(editingRound, parsed); setModal(null); }}>GUARDAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { const parsed = {}; for (const p of game.players) parsed[p] = parseInt(editScores[p], 10) || 0; onModifyRound(editingRound, parsed); setModal(null); }}>{tx('game_save')}</Btn>
           </div>
         </Card></Overlay>
       )}
 
       {modal === 'reset' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿RESETEAR?</div></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_reset_q')}</div></div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
-            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger">RESETEAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger">{tx('game_reset')}</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -1073,11 +990,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <AlertTriangle size={22} color={C.red} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>¿ABANDONAR?</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>{tx('game_abandon_q')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">VOLVER</Btn>
-            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger">ABANDONAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">{tx('game_back')}</Btn>
+            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger">{tx('game_abandon')}</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -1088,11 +1005,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         const suggestions = q ? available.filter(p => p.toLowerCase().includes(q)).slice(0, 5) : available.slice(0, 5);
         return (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>AGREGAR JUGADOR</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_add_p')}</div>
           <input
             value={newPlayerName}
             onChange={(e) => setNewPlayerName(e.target.value)}
-            placeholder="Nombre…"
+            placeholder={tx('setup_ph_name')}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -1133,14 +1050,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               return (
                 <>
                   <button type="button" onClick={() => setNewPlayerPoints('0')} style={btnStyle(newPlayerPoints === '0')}>
-                    <div style={{ fontSize: 12 }}>0 PTS</div>
+                    <div style={{ fontSize: 12 }}>{tx('game_pts0')}</div>
                   </button>
                   <button type="button" onClick={() => setNewPlayerPoints('min')} style={btnStyle(newPlayerPoints === 'min')}>
-                    <div style={{ fontSize: 12 }}>IGUALAR MENOR</div>
-                    <div style={{ fontSize: 11, opacity: 0.9 }}>({minVal} pts)</div>
+                    <div style={{ fontSize: 12 }}>{tx('game_match_low')}</div>
+                    <div style={{ fontSize: 11, opacity: 0.9 }}>({minVal} {tx('game_pts_abbr')})</div>
                   </button>
                   <button type="button" onClick={() => setNewPlayerPoints('custom')} style={btnStyle(newPlayerPoints === 'custom')}>
-                    <div style={{ fontSize: 12 }}>CUSTOM</div>
+                    <div style={{ fontSize: 12 }}>{tx('game_custom')}</div>
                   </button>
                 </>
               );
@@ -1152,7 +1069,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               inputMode="numeric"
               value={newPlayerCustomPts}
               onChange={(e) => setNewPlayerCustomPts(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="Puntos iniciales…"
+              placeholder={tx('game_ph_start')}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -1169,7 +1086,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             />
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">CANCELAR</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
             <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => {
               const nm = newPlayerName.trim();
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
@@ -1178,7 +1095,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               else if (newPlayerPoints === 'custom') pts = Math.max(0, parseInt(newPlayerCustomPts, 10) || 0);
               onAddPlayer(nm, pts);
               setModal(null);
-            }}>AGREGAR</Btn>
+            }}>{tx('game_add_btn')}</Btn>
           </div>
         </Card></Overlay>
         ); })()}
@@ -1199,12 +1116,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             }}>
               <AlertTriangle size={22} color={C.navy} strokeWidth={2.5} />
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>¿SEGURO?</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_score_sure')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-            {suspicious.length === 1
-              ? 'Un jugador tiene un puntaje muy alto para una sola ronda. Revisá la suma de las cartas:'
-              : 'Algunos jugadores tienen un puntaje muy alto para una sola ronda. Revisá la suma de las cartas:'}
+            {suspicious.length === 1 ? tx('game_score_1') : tx('game_score_n')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
             {suspicious.map(p => (
@@ -1214,7 +1129,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 padding: '10px 14px'
               }}>
                 <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
-                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
+                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} {tx('game_pts_abbr')}</span>
               </div>
             ))}
           </div>
@@ -1222,11 +1137,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             background: C.creamLight, border: `2px dashed ${C.navy}30`, borderRadius: 10,
             padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.inkSoft, lineHeight: 1.5
           }}>
-            El máximo teórico en Flip 7 es <strong style={{ color: C.navy }}>179 pts</strong> (7 cartas más altas + x2 + modificadores + bonus). Un puntaje de 70+ es posible pero poco frecuente.
+            {tx('game_score_foot')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 13 }}>CORREGIR</Btn>
-            <Btn onClick={confirmSuspiciousScore} style={{ fontSize: 13 }}>SÍ, ES CORRECTO</Btn>
+            <Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 13 }}>{tx('game_score_fix')}</Btn>
+            <Btn onClick={confirmSuspiciousScore} style={{ fontSize: 13 }}>{tx('game_score_yes')}</Btn>
           </div>
         </Card></Overlay>
         );
@@ -1248,12 +1163,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             }}>
               <X size={22} color={C.white} strokeWidth={3} />
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>IMPOSIBLE</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>{tx('game_imp_h')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-            {impossible.length === 1
-              ? 'Un jugador tiene un puntaje que supera el máximo posible del juego:'
-              : 'Algunos jugadores tienen un puntaje que supera el máximo posible del juego:'}
+            {impossible.length === 1 ? tx('game_imp_1') : tx('game_imp_n')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
             {impossible.map(p => (
@@ -1263,7 +1176,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 padding: '10px 14px'
               }}>
                 <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
-                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} pts</span>
+                <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} {tx('game_pts_abbr')}</span>
               </div>
             ))}
           </div>
@@ -1271,9 +1184,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             background: `${C.red}10`, border: `2px solid ${C.red}40`, borderRadius: 10,
             padding: '10px 12px', marginBottom: 16, fontFamily: F.body, fontSize: 12, color: C.ink, lineHeight: 1.5
           }}>
-            El puntaje máximo posible en una ronda de Flip 7 es <strong style={{ color: C.red }}>179 puntos</strong>. Corregí el puntaje para continuar.
+            {tx('game_imp_foot')}
           </div>
-          <Btn onClick={() => setModal(null)} style={{ fontSize: 14 }}>CORREGIR</Btn>
+          <Btn onClick={() => setModal(null)} style={{ fontSize: 14 }}>{tx('game_imp_ok')}</Btn>
         </Card></Overlay>
         );
       })()}
@@ -1281,7 +1194,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   );
 }
 
-function GameOverScreen({ game, onHome }) {
+function GameOverScreen({ game, onHome, tx }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
   useEffect(() => {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
@@ -1294,7 +1207,7 @@ function GameOverScreen({ game, onHome }) {
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <div style={{ display: 'inline-block', background: C.yellow, border: `4px solid ${C.navy}`, borderRadius: 999, padding: 18, boxShadow: `${shadow()}, 0 0 30px ${C.yellow}50` }}><Trophy size={44} color={C.navy} fill={C.navy} /></div>
         <div style={{ fontFamily: F.display, fontSize: 42, color: C.yellow, marginTop: 16, textShadow: `4px 4px 0 ${C.navyDark}` }}>{game.winner.toUpperCase()}</div>
-        <div style={{ fontFamily: F.display, fontSize: 24, color: C.cream }}>{game.finalScores[game.winner]} PTS</div>
+        <div style={{ fontFamily: F.display, fontSize: 24, color: C.cream }}>{game.finalScores[game.winner]} {tx('go_pts')}</div>
       </div>
       <Card style={{ padding: 14, marginBottom: 20 }} glow>
         {ranked.map((p, i) => (
@@ -1304,7 +1217,7 @@ function GameOverScreen({ game, onHome }) {
           </div>
         ))}
       </Card>
-      <Btn onClick={onHome} icon={CardsIcon}>NUEVA PARTIDA</Btn>
+      <Btn onClick={onHome} icon={CardsIcon}>{tx('go_new')}</Btn>
     </PageBg>
   );
 }
@@ -1314,14 +1227,14 @@ function efficaciaPct(p) {
   return (100 * p.wins) / p.gamesPlayed;
 }
 
-function RankingsScreen({ data, onBack }) {
+function RankingsScreen({ data, onBack, tx }) {
   const [tab, setTab] = useState('wins');
   const players = Object.values(data.players);
   const tabs = [
-    { id: 'wins', label: 'GANADAS', icon: Trophy, sort: (a, b) => b.wins - a.wins, value: p => p.wins, suf: '' },
+    { id: 'wins', label: tx('rk_wins'), icon: Trophy, sort: (a, b) => b.wins - a.wins, value: p => p.wins, suf: '' },
     {
       id: 'eff',
-      label: 'EFICAZ',
+      label: tx('rk_eff'),
       icon: Percent,
       sort: (a, b) => {
         const d = efficaciaPct(b) - efficaciaPct(a);
@@ -1331,16 +1244,16 @@ function RankingsScreen({ data, onBack }) {
       value: p => (p.gamesPlayed ? Math.round(efficaciaPct(p)) : 0),
       suf: '%',
     },
-    { id: 'best', label: 'MEJOR', icon: Crown, sort: (a, b) => b.bestGameScore - a.bestGameScore, value: p => p.bestGameScore, suf: 'pts' },
-    { id: 'round', label: 'RONDA', icon: Zap, sort: (a, b) => b.highestRound - a.highestRound, value: p => p.highestRound, suf: 'pts' },
-    { id: 'avg', label: 'PROM.', icon: TrendingUp, sort: (a, b) => (b.gamesPlayed ? b.totalPoints / b.gamesPlayed : 0) - (a.gamesPlayed ? a.totalPoints / a.gamesPlayed : 0), value: p => p.gamesPlayed ? Math.round(p.totalPoints / p.gamesPlayed) : 0, suf: 'pts/p' },
+    { id: 'best', label: tx('rk_best'), icon: Crown, sort: (a, b) => b.bestGameScore - a.bestGameScore, value: p => p.bestGameScore, suf: 'pts' },
+    { id: 'round', label: tx('rk_round'), icon: Zap, sort: (a, b) => b.highestRound - a.highestRound, value: p => p.highestRound, suf: 'pts' },
+    { id: 'avg', label: tx('rk_avg'), icon: TrendingUp, sort: (a, b) => (b.gamesPlayed ? b.totalPoints / b.gamesPlayed : 0) - (a.gamesPlayed ? a.totalPoints / a.gamesPlayed : 0), value: p => p.gamesPlayed ? Math.round(p.totalPoints / p.gamesPlayed) : 0, suf: 'pts/p' },
   ];
   const at = tabs.find(t => t.id === tab);
   const sorted = [...players].sort(at.sort);
 
   return (
     <PageBg showEric={false}>
-      <HeaderBar title="RANKINGS" onBack={onBack} />
+      <HeaderBar title={tx('rk_title')} onBack={onBack} />
       <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14, paddingBottom: 4, scrollbarWidth: 'none' }}>
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
@@ -1359,7 +1272,7 @@ function RankingsScreen({ data, onBack }) {
               <div>
                 <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
                 {tab !== 'eff' && (
-                  <div style={{ fontFamily: F.body, fontSize: 9 }}>{p.gamesPlayed}p · {p.wins}w</div>
+                  <div style={{ fontFamily: F.body, fontSize: 9 }}>{tx('rk_pw', { p: p.gamesPlayed, w: p.wins })}</div>
                 )}
               </div>
             </div>
@@ -1367,10 +1280,10 @@ function RankingsScreen({ data, onBack }) {
               {tab === 'eff' ? (
                 <>
                   <div style={{ fontFamily: F.display, fontSize: 17, color: p.gamesPlayed ? C.navy : C.inkSoft }}>
-                    {p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : '—'}
+                    {p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : tx('rk_na')}
                   </div>
                   <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, marginTop: 2 }}>
-                    {p.wins} gan. / {p.gamesPlayed} jug.
+                    {tx('rk_gw', { w: p.wins, g: p.gamesPlayed })}
                   </div>
                 </>
               ) : (
@@ -1387,19 +1300,19 @@ function RankingsScreen({ data, onBack }) {
   );
 }
 
-function HistoryScreen({ data, onBack, onDelete }) {
+function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   const games = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   return (
     <PageBg showEric={false}>
-      <HeaderBar title="HISTORIAL" onBack={onBack} />
+      <HeaderBar title={tx('hist_title')} onBack={onBack} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {games.map(g => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
           return (
             <Card key={g.id} style={{ padding: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 10 }}>{fmtDate(g.date)}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 10 }}>{fmtDate(g.date, lang)}</span></div>
                 <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
               </div>
               {r.map((p, i) => (
@@ -1417,10 +1330,10 @@ function HistoryScreen({ data, onBack, onDelete }) {
       </div>
       {confirmDelete && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>¿BORRAR?</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>{tx('hist_del')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDelete(null)} variant="secondary">CANCELAR</Btn>
-            <Btn onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} variant="danger">BORRAR</Btn>
+            <Btn onClick={() => setConfirmDelete(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} variant="danger">{tx('setup_delete')}</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -1430,6 +1343,10 @@ function HistoryScreen({ data, onBack, onDelete }) {
 
 // ═══════ APP ═══════
 export default function App() {
+  const [lang, setLang] = useState(() => { try { return localStorage.getItem('flip7_lang') || 'es'; } catch { return 'es'; } });
+  const tx = useCallback((key, rep) => Tx(lang, key, rep || {}), [lang]);
+  useEffect(() => { try { localStorage.setItem('flip7_lang', lang); } catch (_) {} }, [lang]);
+
   const [screen, setScreen] = useState('home');
   const [data, setData] = useState({ players: {}, games: [] });
   const [loading, setLoading] = useState(true);
@@ -1508,18 +1425,8 @@ export default function App() {
     return { status: 'continued', gameAfter };
   };
 
-  const grantMotivationBonus = (names) => {
-    if (!game || !names?.length) return;
-    const setN = new Set(names);
-    const bonusScores = Object.fromEntries(game.players.map(p => [p, setN.has(p) ? 10 : 0]));
-    const newRounds = [...game.rounds, { scores: bonusScores }];
-    const nt = { ...game.totals };
-    for (const p of game.players) nt[p] += bonusScores[p];
-    setGame({ ...game, rounds: newRounds, totals: nt });
-  };
-
   const goHome = () => { 
-    if (game && screen === 'game' && !window.confirm("¿Seguro que querés abandonar? Se perderá el progreso.")) return;
+    if (game && screen === 'game' && !window.confirm(Tx(lang, 'confirm_abandon'))) return;
     setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); 
   };
 
@@ -1550,7 +1457,7 @@ export default function App() {
     setGame({ ...game, rounds: ur, totals: nt });
   };
 
-  if (loading) return <PageBg showEric={false}><div style={{ textAlign: 'center', padding: 60, fontFamily: F.display, color: C.yellow, fontSize: 18 }}>Cargando…</div></PageBg>;
+  if (loading) return <PageBg showEric={false}><div style={{ textAlign: 'center', padding: 60, fontFamily: F.display, color: C.yellow, fontSize: 18 }}>{tx('loading')}</div></PageBg>;
 
   return (
     <>
@@ -1574,28 +1481,28 @@ export default function App() {
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {screen === 'home' && <HomeScreen data={data} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
+      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
       {screen === 'setup' && (<>
-        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onSavePlayer={savePlayerName} />
+        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onSavePlayer={savePlayerName} tx={tx} />
         {targetPickerOpen && (
           <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>¿A CUÁNTOS PUNTOS?</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('pick_target')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-              {[{ v: 200, badge: 'OFICIAL' }, { v: 300, badge: 'RECOMENDADO' }, { v: 400 }, { v: 500 }].map(({ v, badge }) => (
+              {[{ v: 200, badgeKey: 'badge_official' }, { v: 300, badgeKey: 'badge_rec' }, { v: 400, badgeKey: null }, { v: 500, badgeKey: null }].map(({ v, badgeKey }) => (
                 <button key={v} onClick={() => startGame(v)} style={{ position: 'relative', background: C.yellow, color: C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
-                  {badge && <Badge text={badge} />}
+                  {badgeKey && <Badge text={tx(badgeKey)} />}
                   <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
                 </button>
               ))}
             </div>
-            <Btn onClick={() => setTargetPickerOpen(false)} variant="secondary" style={{ fontSize: 14 }}>CANCELAR</Btn>
+            <Btn onClick={() => setTargetPickerOpen(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
           </Card></Overlay>
         )}
       </>)}
-      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onGrantMotivationBonus={grantMotivationBonus} existingPlayers={Object.keys(data.players)} />}
-      {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} />}
-      {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} />}
-      {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} />}
+      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
+      {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} tx={tx} />}
+      {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} />}
+      {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
     </>
   );
 }
