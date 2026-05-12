@@ -167,6 +167,42 @@ function updatePlayerStats(players, game) {
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
 
+/** Cuenta cuántas rondas consecutivas con 0 puntos lleva ese jugador desde la última hacia atrás. */
+function trailingZeroStreakRounds(rounds, playerName) {
+  let n = 0;
+  for (let i = rounds.length - 1; i >= 0; i--) {
+    const s = rounds[i]?.scores?.[playerName] ?? 0;
+    if (s !== 0) break;
+    n++;
+  }
+  return n;
+}
+
+// "Alertas Picantes": frases irónicas para 3 rondas seguidas en cero.
+const SPICY_PHRASES_SINGLE = [
+  '¿{name}, estás jugando al Flip 7 o contando moscas?',
+  '¡Alguien que le explique las reglas a {name}!',
+  '{name}, tres ceros seguidos... ¿Estás bien?',
+  '{name}, la baraja no es la enemiga. ¿O sí?',
+  '{name}: 3 rondas, 0 puntos. La constancia importa, eh.',
+];
+
+const SPICY_PHRASES_MULTI = [
+  '¿Seguro que saben jugar, chicos?',
+  'Tres ceros seguidos cada uno. {names}, ¿están jugando o de visita?',
+  '{names}: equipo "todavía no me cae la ficha".',
+  'Si esto fuera una clase de Flip 7, hoy aplazan: {names}.',
+];
+
+function pickSpicyMessage(players) {
+  if (!players?.length) return '';
+  const arr = players.length === 1 ? SPICY_PHRASES_SINGLE : SPICY_PHRASES_MULTI;
+  const tpl = arr[Math.floor(Math.random() * arr.length)];
+  return tpl
+    .split('{name}').join(players[0] ?? '')
+    .split('{names}').join(players.join(' · '));
+}
+
 function fmtDate(iso, lang = 'es') {
   if (!iso) return '';
   try {
@@ -619,6 +655,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [newPlayerCustomPts, setNewPlayerCustomPts] = useState('');
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
+  const [spicyAlert, setSpicyAlert] = useState(null);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -643,6 +680,15 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     return { projectedTotals, someOneWon, nearWin };
   };
 
+  const maybeOpenSpicyAlert = (g) => {
+    if (!g?.rounds?.length || !g.players?.length) return;
+    const offenders = g.players.filter(p => trailingZeroStreakRounds(g.rounds, p) >= 3);
+    if (offenders.length === 0) return;
+    if (Math.random() < 0.5) {
+      setSpicyAlert({ players: offenders, message: pickSpicyMessage(offenders) });
+    }
+  };
+
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
@@ -652,6 +698,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     }
     if (result?.status === 'continued' || result?.status === 'finished') {
       setTab('resultados');
+    }
+    if (result?.status === 'continued' && result.gameAfter) {
+      maybeOpenSpicyAlert(result.gameAfter);
     }
   };
 
@@ -892,6 +941,48 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             setTab('anotar');
           }} style={{ fontSize: 14 }}>{tx('game_continue')}</Btn>
         </Card></Overlay>
+      )}
+
+      {spicyAlert && (
+        <Overlay>
+          <div style={{
+            maxWidth: 380, width: '100%',
+            borderRadius: 18,
+            background: 'linear-gradient(135deg, #FF7A1A 0%, #FF3B86 55%, #8B2AC8 100%)',
+            border: `4px solid ${C.navyDark}`,
+            boxShadow: `${shadow(C.navyDark, 6, 6)}, 0 0 30px rgba(255, 122, 26, 0.45)`,
+            padding: 24,
+            color: C.white,
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', inset: 6, border: '2px dashed rgba(255,255,255,0.4)',
+              borderRadius: 12, pointerEvents: 'none'
+            }} />
+            <div style={{
+              fontFamily: F.display, fontSize: 22, letterSpacing: '2px',
+              textShadow: '3px 3px 0 rgba(0,0,0,0.35)', marginBottom: 14,
+              display: 'flex', alignItems: 'center', gap: 8, position: 'relative'
+            }}>
+              <span style={{ fontSize: 26 }}>🌶️</span>
+              ¡ALERTA PICANTE!
+            </div>
+            <div style={{
+              fontFamily: F.body, fontSize: 16, lineHeight: 1.45, fontWeight: 700,
+              textShadow: '1px 1px 0 rgba(0,0,0,0.35)', marginBottom: 20, position: 'relative'
+            }}>
+              {spicyAlert.message}
+            </div>
+            <button onClick={() => setSpicyAlert(null)} style={{
+              width: '100%', padding: '12px 16px',
+              background: C.yellow, color: C.navyDark,
+              border: `3px solid ${C.navyDark}`, borderRadius: 12,
+              fontFamily: F.display, fontSize: 15, letterSpacing: '1.5px',
+              boxShadow: shadow(C.navyDark, 3, 3), cursor: 'pointer', position: 'relative'
+            }}>PROMETO MEJORAR</button>
+          </div>
+        </Overlay>
       )}
 
       {modal === 'options' && (
