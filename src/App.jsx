@@ -517,7 +517,12 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
+  const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
   const nameRowRef = useRef(null);
+
+  useEffect(() => {
+    setSuggestionHoverIdx(null);
+  }, [name]);
 
   useEffect(() => {
     const closeSuggestions = (e) => {
@@ -640,22 +645,29 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
       {available.length > 0 && (
         <Card style={{ padding: 14, marginBottom: 12 }}>
-          <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_saved')}</div>
+          <div style={{
+            fontFamily: F.display,
+            fontSize: 14,
+            color: C.navy,
+            letterSpacing: '2.5px',
+            marginBottom: 8,
+            textAlign: 'center',
+          }}>{tx('setup_saved')}</div>
           <div
             style={{
-              background: C.creamLight,
+              background: 'rgba(255, 255, 255, 0.82)',
               borderRadius: 12,
-              padding: 10,
-              border: `2px solid ${C.yellowDark}55`,
-              boxShadow: `inset 2px 2px 0 ${C.creamDark}`,
+              padding: 14,
+              border: '2px solid rgba(46, 58, 140, 0.14)',
+              boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(46, 58, 140, 0.06)`,
             }}
           >
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                columnGap: 10,
-                rowGap: 10,
+                columnGap: 12,
+                rowGap: 12,
               }}
             >
               {available.map(p => (
@@ -713,9 +725,16 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       )}
 
       <Card style={{ padding: 14, marginBottom: 14 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_add_new')}</div>
+        <div style={{
+          fontFamily: F.display,
+          fontSize: 14,
+          color: C.navy,
+          letterSpacing: '2.5px',
+          marginBottom: 8,
+          textAlign: 'center',
+        }}>{tx('setup_add_new')}</div>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
             <input
               value={name}
               onChange={(e) => { setName(e.target.value); setSuppressSavedSuggestions(false); }}
@@ -730,7 +749,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                 minHeight: 50,
                 boxSizing: 'border-box',
                 background: C.creamLight,
-                border: `3px solid ${C.navy}`,
+                border: '3px solid #000080',
                 borderRadius: 10,
                 padding: '0 14px',
                 fontFamily: F.body,
@@ -745,18 +764,20 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
               <div
                 role="listbox"
                 aria-label={tx('setup_saved')}
+                onMouseLeave={() => setSuggestionHoverIdx(null)}
                 style={{
                   position: 'absolute',
                   left: 0,
                   right: 0,
-                  top: 'calc(100% + 6px)',
-                  zIndex: 40,
+                  top: 'calc(100% + 2px)',
+                  zIndex: 80,
                   background: C.creamLight,
-                  border: `3px solid ${C.navy}`,
+                  border: '3px solid #000080',
                   borderRadius: 10,
-                  boxShadow: shadowSm(),
+                  boxShadow: '0 4px 14px rgba(0, 0, 128, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
                   maxHeight: 220,
                   overflowY: 'auto',
+                  WebkitOverflowScrolling: 'touch',
                 }}
               >
                 {savedMatchSuggestions.map((p, idx) => (
@@ -764,23 +785,27 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                     key={p}
                     type="button"
                     role="option"
+                    aria-selected={suggestionHoverIdx === idx}
+                    onMouseEnter={() => setSuggestionHoverIdx(idx)}
+                    onTouchStart={() => setSuggestionHoverIdx(idx)}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => pickSavedSuggestion(p)}
                     style={{
                       width: '100%',
                       textAlign: 'left',
                       border: 'none',
-                      borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : `1px solid ${C.creamDark}`,
-                      background: 'transparent',
-                      padding: '10px 12px',
+                      borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : '1px solid rgba(0, 0, 128, 0.12)',
+                      background: suggestionHoverIdx === idx ? 'rgba(244, 212, 77, 0.42)' : 'transparent',
+                      padding: '11px 14px',
                       fontFamily: F.body,
                       fontSize: 15,
                       fontWeight: 600,
-                      color: C.navy,
+                      color: '#000080',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
+                      transition: 'background 0.12s ease',
                     }}
                   >
                     <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
@@ -801,7 +826,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
               boxSizing: 'border-box',
               padding: '0 16px',
               background: C.yellow,
-              border: `3px solid ${C.navy}`,
+              border: '3px solid #000080',
               borderRadius: 10,
               cursor: 'pointer',
               boxShadow: shadowSm(),
