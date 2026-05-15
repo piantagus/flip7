@@ -470,26 +470,26 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx 
         </div>
       </div>
 
-      <Card style={{ padding: 16, marginBottom: 16 }} glow>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{ textAlign: 'center', padding: 8 }}>
-            <Trophy size={22} color={C.yellow} fill={C.yellow} style={{ marginBottom: 4 }} />
-            <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy }}>{data.games.length}</div>
-            <div style={{ fontFamily: F.display, fontSize: 12, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.2 }}>{tx('home_stat_games')}</div>
+      <Card style={{ padding: 10, marginBottom: 16 }} glow>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <div style={{ textAlign: 'center', padding: '4px 4px 2px' }}>
+            <Trophy size={20} color={C.yellow} fill={C.yellow} style={{ marginBottom: 2 }} />
+            <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy, lineHeight: 1.05 }}>{data.games.length}</div>
+            <div style={{ fontFamily: F.display, fontSize: 14, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.15, marginTop: 2 }}>{tx('home_stat_games')}</div>
           </div>
-          <div style={{ textAlign: 'center', padding: 8 }}>
-            <Users size={22} color={C.yellow} strokeWidth={2.5} style={{ marginBottom: 4 }} />
-            <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy }}>{Object.keys(data.players).length}</div>
-            <div style={{ fontFamily: F.display, fontSize: 12, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.2 }}>{tx('home_stat_players')}</div>
+          <div style={{ textAlign: 'center', padding: '4px 4px 2px' }}>
+            <Users size={20} color={C.yellow} strokeWidth={2.5} style={{ marginBottom: 2 }} />
+            <div style={{ fontFamily: F.display, fontSize: 30, color: C.navy, lineHeight: 1.05 }}>{Object.keys(data.players).length}</div>
+            <div style={{ fontFamily: F.display, fontSize: 14, color: C.inkSoft, letterSpacing: '1.5px', lineHeight: 1.15, marginTop: 2 }}>{tx('home_stat_players')}</div>
           </div>
         </div>
       </Card>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
-        <Btn onClick={onNewGame} icon={CardsIcon}>{tx('home_new_game')}</Btn>
-        <Btn onClick={onRankings} variant="secondary" icon={Trophy}>{tx('home_rankings')}</Btn>
-        <Btn onClick={onHistory} variant="secondary" icon={History}>{tx('home_history')}</Btn>
-        <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages}>{tx('home_language')}</Btn>
+        <Btn onClick={onNewGame} icon={CardsIcon} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_new_game')}</Btn>
+        <Btn onClick={onRankings} variant="secondary" icon={Trophy} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rankings')}</Btn>
+        <Btn onClick={onHistory} variant="secondary" icon={History} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_history')}</Btn>
+        <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_language')}</Btn>
       </div>
 
       {langOpen && (
@@ -514,7 +514,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const available = existing
     .filter(p => !selected.includes(p))
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-  const savedCols = available.length ? Math.ceil(available.length / 2) : 0;
   const lastGame = data.games.length > 0 ? data.games[0] : null;
   const q = name.trim().toLowerCase();
 
@@ -590,16 +589,14 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       {available.length > 0 && (
         <Card style={{ padding: 14, marginBottom: 12 }}>
           <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_saved')}</div>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateRows: 'repeat(2, auto)',
-                gridTemplateColumns: `repeat(${savedCols}, minmax(0, 1fr))`,
-                gridAutoFlow: 'row',
-                gap: 8,
-              }}
-            >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gridAutoRows: 'auto',
+              gap: 8,
+            }}
+          >
               {available.map(p => (
                 <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                   <button
@@ -649,7 +646,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                   </button>
                 </div>
               ))}
-            </div>
           </div>
         </Card>
       )}

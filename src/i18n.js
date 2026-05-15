@@ -14,7 +14,7 @@ export const LEX = {
     setup_title: 'NUEVA PARTIDA',
     setup_last_q_before: '¿',
     setup_last_q_em: 'Repetir',
-    setup_last_q_after: ' los mismos jugadores que la última jugada?',
+    setup_last_q_after: ' los mismos jugadores que la última partida?',
     setup_use: 'USAR ESTOS JUGADORES',
     setup_players: 'JUGADORES',
     setup_two: 'Sumá al menos 2 jugadores.',
