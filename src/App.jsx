@@ -208,8 +208,23 @@ function fmtDate(iso, lang = 'es') {
   try {
     const loc = lang === 'en' ? 'en-US' : 'es-AR';
     const d = new Date(iso);
-    return `${d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`;
+    return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return ''; }
+}
+
+/** Subtítulo en pestaña Ganadas: partidas y victorias en palabras (plural correcto). */
+function formatGamesWinsLine(stats, lang) {
+  const g = stats.gamesPlayed;
+  const w = stats.wins;
+  if (lang === 'en') return `${g} game${g !== 1 ? 's' : ''} · ${w} win${w !== 1 ? 's' : ''}`;
+  return `${g} partida${g !== 1 ? 's' : ''} · ${w} ganada${w !== 1 ? 's' : ''}`;
+}
+
+/** Pie EFICAZ: mismas palabras sin abreviar. */
+function formatWinsGamesEff(wins, gamesPlayed, lang) {
+  if (!gamesPlayed) return '';
+  if (lang === 'en') return `${wins} win${wins !== 1 ? 's' : ''} · ${gamesPlayed} game${gamesPlayed !== 1 ? 's' : ''}`;
+  return `${wins} ganada${wins !== 1 ? 's' : ''} · ${gamesPlayed} partida${gamesPlayed !== 1 ? 's' : ''}`;
 }
 
 // ═══════ DESIGN ATOMS ═══════
@@ -394,13 +409,14 @@ function CardsIcon({ size = 30 }) {
   );
 }
 
-function RankBadge({ rank }) {
+function RankBadge({ rank, size = 'sm' }) {
   const bg = rank === 1 ? `linear-gradient(135deg, ${C.yellowBright}, ${C.yellowDark})` : rank === 2 ? `linear-gradient(135deg, #d0d0d0, #a0a0a0)` : rank === 3 ? 'linear-gradient(135deg, #cd9b6a, #a07040)' : C.creamDark;
+  const dim = size === 'lg' ? { box: 32, font: 14 } : { box: 24, font: 10 };
   return (
     <div style={{
-      width: 24, height: 24, borderRadius: 999, background: bg,
+      width: dim.box, height: dim.box, borderRadius: 999, background: bg,
       border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: F.display, fontSize: 10, color: C.navy, flexShrink: 0,
+      fontFamily: F.display, fontSize: dim.font, color: C.navy, flexShrink: 0,
       boxShadow: rank === 1 ? `0 0 8px ${C.yellow}60` : '2px 2px 0 #00000020'
     }}>{rank}</div>
   );
@@ -864,7 +880,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
                       flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
-                  >{tx('game_bust')}</button>
+                  >BUST</button>
                 </div>
               </div>
             );
@@ -1300,11 +1316,11 @@ function GameOverScreen({ game, onHome, tx }) {
         <div style={{ fontFamily: F.display, fontSize: 42, color: C.yellow, marginTop: 16, textShadow: `4px 4px 0 ${C.navyDark}` }}>{game.winner.toUpperCase()}</div>
         <div style={{ fontFamily: F.display, fontSize: 24, color: C.cream }}>{game.finalScores[game.winner]} {tx('go_pts')}</div>
       </div>
-      <Card style={{ padding: 14, marginBottom: 20 }} glow>
+      <Card style={{ padding: 8, marginBottom: 20 }} glow>
         {ranked.map((p, i) => (
-          <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < ranked.length - 1 ? `2px dashed ${C.navy}15` : 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><RankBadge rank={i + 1} /><span style={{ fontFamily: F.display, fontSize: 14 }}>{p}</span></div>
-            <span style={{ fontFamily: F.display, fontSize: 20 }}>{game.finalScores[p]}</span>
+          <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: i < ranked.length - 1 ? `2px dashed ${C.navy}15` : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><RankBadge rank={i + 1} size="lg" /><span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span></div>
+            <span style={{ fontFamily: F.display, fontSize: 24 }}>{game.finalScores[p]}</span>
           </div>
         ))}
       </Card>
@@ -1318,7 +1334,7 @@ function efficaciaPct(p) {
   return (100 * p.wins) / p.gamesPlayed;
 }
 
-function RankingsScreen({ data, onBack, tx }) {
+function RankingsScreen({ data, onBack, tx, lang }) {
   const [tab, setTab] = useState('wins');
   const players = Object.values(data.players);
   const tabs = [
@@ -1349,21 +1365,21 @@ function RankingsScreen({ data, onBack, tx }) {
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ background: active ? C.yellow : C.tealDark, color: active ? C.navy : C.cream, border: `3px solid ${active ? C.navy : C.cream}40`, borderRadius: 10, padding: '7px 10px', fontFamily: F.display, fontSize: 10, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <I size={12} strokeWidth={2.5} /> {t.label}
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ background: active ? C.yellow : C.tealDark, color: active ? C.navy : C.cream, border: `3px solid ${active ? C.navy : C.cream}40`, borderRadius: 10, padding: '10px 14px', fontFamily: F.display, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <I size={16} strokeWidth={2.5} /> {t.label}
             </button>
           );
         })}
       </div>
-      <Card style={{ padding: 8 }}>
+      <Card style={{ padding: 6 }}>
         {sorted.map((p, i) => (
-          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 4px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
+          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
               <div>
                 <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
                 {tab !== 'eff' && (
-                  <div style={{ fontFamily: F.body, fontSize: 9 }}>{tx('rk_pw', { p: p.gamesPlayed, w: p.wins })}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, lineHeight: 1.25 }}>{formatGamesWinsLine(p, lang)}</div>
                 )}
               </div>
             </div>
@@ -1373,8 +1389,8 @@ function RankingsScreen({ data, onBack, tx }) {
                   <div style={{ fontFamily: F.display, fontSize: 17, color: p.gamesPlayed ? C.navy : C.inkSoft }}>
                     {p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : tx('rk_na')}
                   </div>
-                  <div style={{ fontFamily: F.display, fontSize: 8, color: C.inkSoft, marginTop: 2 }}>
-                    {tx('rk_gw', { w: p.wins, g: p.gamesPlayed })}
+                  <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, marginTop: 2, lineHeight: 1.2 }}>
+                    {formatWinsGamesEff(p.wins, p.gamesPlayed, lang)}
                   </div>
                 </>
               ) : (
@@ -1397,22 +1413,22 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   return (
     <PageBg showEric={false}>
       <HeaderBar title={tx('hist_title')} onBack={onBack} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {games.map(g => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
           return (
-            <Card key={g.id} style={{ padding: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 10 }}>{fmtDate(g.date, lang)}</span></div>
+            <Card key={g.id} style={{ padding: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 11, fontFamily: F.body, color: C.inkSoft }}>{fmtDate(g.date, lang)}</span></div>
                 <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
               </div>
               {r.map((p, i) => (
-                <div key={p} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {i === 0 ? <Crown size={10} color={C.yellow} fill={C.yellow} /> : <span style={{ width: 10 }} />}
-                    <span style={{ fontFamily: F.display, fontSize: 11 }}>{p}</span>
+                <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1px 0', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <RankBadge rank={i + 1} size="lg" />
+                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
                   </div>
-                  <span style={{ fontFamily: F.display, fontSize: 12 }}>{g.finalScores[p]}</span>
+                  <span style={{ fontFamily: F.display, fontSize: 20, color: C.navy, flexShrink: 0 }}>{g.finalScores[p]}</span>
                 </div>
               ))}
             </Card>
@@ -1592,7 +1608,7 @@ export default function App() {
       </>)}
       {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} tx={tx} />}
-      {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} />}
+      {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} lang={lang} />}
       {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
     </>
   );
