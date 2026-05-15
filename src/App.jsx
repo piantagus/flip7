@@ -510,8 +510,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [name, setName] = useState('');
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
-  const existing = Object.keys(data.players).sort();
-  const available = existing.filter(p => !selected.includes(p));
+  const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const available = existing
+    .filter(p => !selected.includes(p))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const savedCols = available.length ? Math.ceil(available.length / 2) : 0;
   const lastGame = data.games.length > 0 ? data.games[0] : null;
   const q = name.trim().toLowerCase();
 
@@ -549,9 +552,10 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
       {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
-          <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '2px', marginBottom: 8 }}>{tx('setup_last')}</div>
-          <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
-            {tx('setup_last_q')}
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
+            {tx('setup_last_q_before')}
+            <span style={{ color: C.navyDark, fontWeight: 700 }}>{tx('setup_last_q_em')}</span>
+            {tx('setup_last_q_after')}
           </div>
           <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
             {lastGame.players.join(' · ')}
@@ -586,26 +590,66 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       {available.length > 0 && (
         <Card style={{ padding: 14, marginBottom: 12 }}>
           <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_saved')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {available.map(p => (
-              <div key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <button onClick={() => add(p)} style={{
-                  background: C.cream, color: C.navy, border: `3px solid ${C.navy}`, borderRadius: 999,
-                  padding: '6px 14px', fontFamily: F.body, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '2px 2px 0 #00000015'
-                }}><Plus size={13} strokeWidth={3} /> {p}</button>
-                <button
-                  onClick={() => handleTryDelete(p)}
-                  style={{
-                    background: `${C.red}20`, color: C.red, border: `3px solid ${C.red}`, borderRadius: 999,
-                    width: 34, height: 34, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '2px 2px 0 #00000015'
-                  }}
-                >
-                  <Trash2 size={14} strokeWidth={2.5} />
-                </button>
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateRows: 'repeat(2, auto)',
+                gridTemplateColumns: `repeat(${savedCols}, minmax(0, 1fr))`,
+                gridAutoFlow: 'row',
+                gap: 8,
+              }}
+            >
+              {available.map(p => (
+                <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => add(p)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      background: C.cream,
+                      color: C.navy,
+                      border: `3px solid ${C.navy}`,
+                      borderRadius: 999,
+                      padding: '6px 10px',
+                      fontFamily: F.body,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 5,
+                      boxShadow: '2px 2px 0 #00000015',
+                    }}
+                  >
+                    <Plus size={13} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTryDelete(p)}
+                    style={{
+                      flexShrink: 0,
+                      background: `${C.red}20`,
+                      color: C.red,
+                      border: `3px solid ${C.red}`,
+                      borderRadius: 999,
+                      width: 34,
+                      height: 34,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '2px 2px 0 #00000015',
+                    }}
+                  >
+                    <Trash2 size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       )}
