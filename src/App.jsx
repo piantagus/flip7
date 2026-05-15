@@ -531,13 +531,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     };
   }, []);
 
+  const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const available = existing
     .filter(p => !selected.includes(p))
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
 
-  const qqRaw = name.trim();
-  const qq = foldForMatch(qqRaw);
+  const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
   if (qq) {
     savedMatchSuggestions = existing.filter(p => !selected.includes(p) && foldForMatch(p).includes(qq));
