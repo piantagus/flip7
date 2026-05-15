@@ -510,23 +510,80 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [name, setName] = useState('');
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [nameInputFocused, setNameInputFocused] = useState(false);
+  const suggestBlurTimerRef = useRef(null);
+
+  useEffect(() => () => {
+    if (suggestBlurTimerRef.current) window.clearTimeout(suggestBlurTimerRef.current);
+  }, []);
+
+  const cancelSuggestBlurTimer = useCallback(() => {
+    if (suggestBlurTimerRef.current) {
+      window.clearTimeout(suggestBlurTimerRef.current);
+      suggestBlurTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleSuggestBlur = useCallback(() => {
+    cancelSuggestBlurTimer();
+    suggestBlurTimerRef.current = window.setTimeout(() => {
+      setNameInputFocused(false);
+      suggestBlurTimerRef.current = null;
+    }, 200);
+  }, [cancelSuggestBlurTimer]);
+
   const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const available = existing
     .filter(p => !selected.includes(p))
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
-  const q = name.trim().toLowerCase();
+
+  const qq = name.trim().toLowerCase();
+  let savedMatchSuggestions = [];
+  if (qq) {
+    savedMatchSuggestions = existing.filter(p => !selected.includes(p) && p.toLowerCase().includes(qq));
+    savedMatchSuggestions.sort((a, b) => {
+      const ap = a.toLowerCase().startsWith(qq);
+      const bp = b.toLowerCase().startsWith(qq);
+      if (ap !== bp) return ap ? -1 : 1;
+      return a.localeCompare(b, undefined, { sensitivity: 'base' });
+    });
+    savedMatchSuggestions = savedMatchSuggestions.slice(0, 12);
+  }
+
+  const selectedHasCi = (nm) => selected.some(s => s.toLowerCase() === nm.toLowerCase());
 
   const addNew = () => {
     const t = name.trim(); if (!t) return;
     const match = existing.find(p => p.toLowerCase() === t.toLowerCase());
-    const fn = match || t; if (selected.includes(fn)) { setName(''); return; }
+    const fn = match || t;
+    if (selectedHasCi(fn)) {
+      setAlertMessage(tx('setup_dup'));
+      return;
+    }
     setSelected([...selected, fn]); setName('');
+    cancelSuggestBlurTimer();
+    setNameInputFocused(false);
     if (!match) onSavePlayer(fn);
   };
-  
+
+  const add = (p) => {
+    if (selectedHasCi(p)) {
+      setAlertMessage(tx('setup_dup'));
+      return;
+    }
+    setSelected([...selected, p]); setName('');
+    cancelSuggestBlurTimer();
+    setNameInputFocused(false);
+  };
+
+  const pickSavedSuggestion = (p) => {
+    cancelSuggestBlurTimer();
+    setNameInputFocused(false);
+    add(p);
+  };
+
   const remove = (p) => setSelected(selected.filter(x => x !== p));
-  const add = (p) => { setSelected([...selected, p]); setName(''); };
 
   const handleTryStart = () => {
     if (name.trim() !== '') {
@@ -565,11 +622,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         </Card>
       )}
 
+      {selected.length === 0 && (
+        <div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft, fontSize: 14, marginBottom: 12 }}>{tx('setup_two')}</div>
+      )}
+
+      {selected.length > 0 && (
       <Card style={{ padding: 14, marginBottom: 12 }}>
         <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_players')} ({selected.length})</div>
-        {selected.length === 0 ? (
-          <div style={{ fontFamily: F.serif, fontStyle: 'italic', color: C.inkSoft, fontSize: 14, padding: '8px 0' }}>{tx('setup_two')}</div>
-        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {selected.map((p, i) => (
               <div key={p} style={{
@@ -579,12 +638,12 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
               }}>
                 <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
                 <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
-                <button onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
               </div>
             ))}
           </div>
-        )}
       </Card>
+      )}
 
       {available.length > 0 && (
         <Card style={{ padding: 14, marginBottom: 12 }}>
@@ -652,13 +711,82 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
       <Card style={{ padding: 14, marginBottom: 14 }}>
         <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_add_new')}</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addNew(); }}
-            placeholder={tx('setup_ph_name')} style={{
-              flex: 1, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '11px 14px',
-              fontFamily: F.body, fontSize: 16, color: C.ink, outline: 'none', boxShadow: `inset 2px 2px 0 ${C.creamDark}`
-          }} />
-          <button onClick={addNew} style={{
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addNew(); }}
+              onFocus={() => { cancelSuggestBlurTimer(); setNameInputFocused(true); }}
+              onBlur={scheduleSuggestBlur}
+              placeholder={tx('setup_ph_name')}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                background: C.creamLight,
+                border: `3px solid ${C.navy}`,
+                borderRadius: 10,
+                padding: '11px 14px',
+                fontFamily: F.body,
+                fontSize: 16,
+                color: C.ink,
+                outline: 'none',
+                boxShadow: `inset 2px 2px 0 ${C.creamDark}`,
+              }}
+            />
+            {nameInputFocused && savedMatchSuggestions.length > 0 && (
+              <div
+                role="listbox"
+                aria-label={tx('setup_saved')}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 'calc(100% + 6px)',
+                  zIndex: 40,
+                  background: C.creamLight,
+                  border: `3px solid ${C.navy}`,
+                  borderRadius: 10,
+                  boxShadow: shadowSm(),
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                }}
+              >
+                {savedMatchSuggestions.map((p, idx) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="option"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pickSavedSuggestion(p)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : `1px solid ${C.creamDark}`,
+                      background: 'transparent',
+                      padding: '10px 12px',
+                      fontFamily: F.body,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: C.navy,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={addNew} style={{
             background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '0 16px', cursor: 'pointer',
             boxShadow: shadowSm(), color: C.navy, display: 'flex', alignItems: 'center'
           }}><Plus size={22} strokeWidth={3} /></button>
