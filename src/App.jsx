@@ -1097,14 +1097,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   const headerStatLabel = { fontFamily: F.display, fontSize: 7, color: C.navy, letterSpacing: '1.5px', lineHeight: 1.1 };
-  const headerStatValue = { fontFamily: F.display, fontSize: 22, color: C.navy, lineHeight: 1 };
+  const headerStatValue = { fontFamily: F.display, fontSize: 20, color: C.navy, lineHeight: 1 };
   const headerStatCard = {
     flex: 1,
     minWidth: 0,
     background: C.yellow,
-    border: `3px solid ${C.navy}`,
-    borderRadius: 10,
-    padding: '4px 10px',
+    border: `2.5px solid ${C.navy}`,
+    borderRadius: 8,
+    padding: '3px 8px',
     boxShadow: shadowSm(),
     display: 'flex',
     flexDirection: 'column',
@@ -1113,7 +1113,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   return (
     <PageBg showEric={false}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 10 }}>
+      <div style={{ paddingTop: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flex: 1, minWidth: 0 }}>
           <div style={headerStatCard}>
             <div style={headerStatLabel}>{tx('game_round')}</div>
@@ -1125,11 +1126,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           </div>
         </div>
         <button onClick={() => setModal('options')} style={{
-          background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
-          padding: '12px 18px', cursor: 'pointer', boxShadow: shadowSm(),
-          fontFamily: F.display, fontSize: 10, letterSpacing: '1.5px', color: C.navy,
-          display: 'flex', alignItems: 'center', gap: 5
-        }}><Settings size={15} strokeWidth={2.5} /> {tx('game_options')}</button>
+          background: C.yellow, border: `2.5px solid ${C.navy}`, borderRadius: 8,
+          padding: '8px 12px', cursor: 'pointer', boxShadow: shadowSm(),
+          fontFamily: F.display, fontSize: 9, letterSpacing: '1px', color: C.navy,
+          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+        }}><Settings size={14} strokeWidth={2.5} /> {tx('game_options')}</button>
       </div>
 
       <div style={{ display: 'flex', gap: 0, marginBottom: -4, position: 'relative', zIndex: 3 }}>
@@ -1179,12 +1180,12 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 boxShadow: '1px 1px 0 #00000010',
                 overflow: 'hidden',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.1, minWidth: 0 }}>
-                      {isLeader && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
+                      {isLeader && <Crown size={13} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
                       <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p}</span>
-                      <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, flexShrink: 0 }}>{total}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy, flexShrink: 0 }}>{total}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -1198,16 +1199,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                       placeholder="0"
                       style={{
-                        width: 116,
-                        height: 30,
+                        width: 120,
+                        height: 32,
                         boxSizing: 'border-box',
                         background: C.white,
                         border: `2px solid ${C.navy}`,
                         borderRadius: 7,
-                        padding: '0 6px',
+                        padding: '0 8px',
                         textAlign: 'center',
                         fontFamily: F.display,
-                        fontSize: 14,
+                        fontSize: 15,
                         lineHeight: 1,
                         color: C.navy,
                         outline: 'none',
@@ -1222,7 +1223,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                         color: C.white,
                         border: `2px solid ${C.navyDark}`,
                         borderRadius: 7,
-                        height: 30,
+                        height: 32,
                         boxSizing: 'border-box',
                         padding: '0 8px',
                         cursor: isBustDisabled ? 'default' : 'pointer',
@@ -1697,6 +1698,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         </Card></Overlay>
         );
       })()}
+      </div>
     </PageBg>
   );
 }
