@@ -122,9 +122,13 @@ async function savePlayerName(name) {
 }
 
 async function removePlayerName(name) {
-  if (!name) return;
+  if (!name) return false;
   const { error } = await supabase.from('players').delete().eq('name', name);
-  if (error) console.error('No se pudo borrar jugador en Supabase:', error);
+  if (error) {
+    console.error('No se pudo borrar jugador en Supabase:', error);
+    return false;
+  }
+  return true;
 }
 
 async function insertGame(game) {
@@ -148,9 +152,97 @@ async function insertGame(game) {
 }
 
 async function removeGame(id) {
-  if (!id) return;
+  if (!id) return false;
   const { error } = await supabase.from('games').delete().eq('id', id);
-  if (error) console.error('No se pudo borrar partida en Supabase:', error);
+  if (error) {
+    console.error('No se pudo borrar partida en Supabase:', error);
+    return false;
+  }
+  return true;
+}
+
+async function updateGame(game) {
+  if (!game?.id) return false;
+  const { error } = await supabase.from('games').update(toGameInsertRow(game)).eq('id', game.id);
+  if (error) {
+    console.error('No se pudo actualizar partida en Supabase:', error);
+    return false;
+  }
+  return true;
+}
+
+function computeWinnerFromFinalScores(finalScores, players) {
+  if (!players?.length) return '';
+  let winner = players[0];
+  let top = finalScores[winner] ?? 0;
+  for (const p of players) {
+    const s = finalScores[p] ?? 0;
+    if (s > top) {
+      top = s;
+      winner = p;
+    }
+  }
+  return winner;
+}
+
+/** Devuelve null si la partida debe eliminarse (< 2 jugadores); si no, la partida sin el jugador. */
+function stripPlayerFromGame(game, playerName) {
+  if (!game?.players?.includes(playerName)) return game;
+  const remainingPlayers = game.players.filter(p => p !== playerName);
+  if (remainingPlayers.length < 2) return null;
+
+  const finalScores = { ...game.finalScores };
+  delete finalScores[playerName];
+
+  const rounds = (game.rounds ?? []).map(round => {
+    const scores = { ...(round.scores ?? {}) };
+    delete scores[playerName];
+    return { ...round, scores };
+  });
+
+  const winner = computeWinnerFromFinalScores(finalScores, remainingPlayers);
+
+  return {
+    ...game,
+    players: remainingPlayers,
+    finalScores,
+    rounds,
+    winner,
+  };
+}
+
+async function executeCascadePlayerDelete(playerName) {
+  const trimmed = playerName?.trim();
+  if (!trimmed) return false;
+
+  const removedPlayer = await removePlayerName(trimmed);
+  if (!removedPlayer) return false;
+
+  const { data: gamesData, error: fetchError } = await supabase
+    .from('games')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (fetchError) {
+    console.error('No se pudieron cargar partidas para borrado en cascada:', fetchError);
+    return false;
+  }
+
+  const affected = (gamesData ?? [])
+    .map(normalizeGameRow)
+    .filter(g => g.players.includes(trimmed));
+
+  for (const g of affected) {
+    const patched = stripPlayerFromGame(g, trimmed);
+    if (patched === null) {
+      const ok = await removeGame(g.id);
+      if (!ok) return false;
+    } else {
+      const ok = await updateGame(patched);
+      if (!ok) return false;
+    }
+  }
+
+  return true;
 }
 
 function updatePlayerStats(players, game) {
@@ -609,12 +701,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   };
 
   const handleTryDelete = (p) => {
-    const hasGames = data.games.some(g => g.players.includes(p));
-    if (hasGames) {
-      setAlertMessage(tx('setup_del_block', { name: p }));
-    } else {
-      setConfirmDeleteSaved(p);
-    }
+    const gameCount = data.games.filter(g => g.players.includes(p)).length;
+    setConfirmDeleteSaved({ name: p, gameCount });
   };
 
   return (
@@ -853,14 +941,25 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <AlertTriangle color={C.red} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('setup_sure')}</div>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>
+              {confirmDeleteSaved.gameCount > 0 ? tx('setup_delete_cascade_title') : tx('setup_sure')}
+            </div>
           </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16 }}>
-            {tx('setup_delete_confirm', { name: confirmDeleteSaved })}
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
+            {confirmDeleteSaved.gameCount > 0
+              ? tx('setup_delete_cascade', { name: confirmDeleteSaved.name, count: confirmDeleteSaved.gameCount })
+              : tx('setup_delete_confirm', { name: confirmDeleteSaved.name })}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary">{tx('setup_cancel')}</Btn>
-            <Btn onClick={() => { onDeleteSavedPlayer(confirmDeleteSaved); setConfirmDeleteSaved(null); }} variant="danger">{tx('setup_delete')}</Btn>
+            <Btn
+              onClick={() => {
+                const { name } = confirmDeleteSaved;
+                setConfirmDeleteSaved(null);
+                onDeleteSavedPlayer(name);
+              }}
+              variant="danger"
+            >{tx('setup_delete')}</Btn>
           </div>
         </Card></Overlay>
       )}
@@ -997,23 +1096,32 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     setTimeout(() => setScoreWarningConfirmed(false), 100);
   };
 
+  const headerStatLabel = { fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px', lineHeight: 1.2 };
+  const headerStatValue = { fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 };
+  const headerStatCard = {
+    flex: 1,
+    minWidth: 0,
+    background: C.yellow,
+    border: `3px solid ${C.navy}`,
+    borderRadius: 12,
+    padding: '6px 14px',
+    boxShadow: shadowSm(),
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+  };
+
   return (
     <PageBg showEric={false}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
-            padding: '6px 14px', boxShadow: shadowSm()
-          }}>
-            <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>{tx('game_round')}</div>
-            <div style={{ fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 }}>{String(roundNum).padStart(2, '0')}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flex: 1, minWidth: 0 }}>
+          <div style={headerStatCard}>
+            <div style={headerStatLabel}>{tx('game_round')}</div>
+            <div style={headerStatValue}>{String(roundNum).padStart(2, '0')}</div>
           </div>
-          <div style={{
-            background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
-            padding: '6px 14px', boxShadow: shadowSm()
-          }}>
-            <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>{tx('game_goal')}</div>
-            <div style={{ fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 }}>{target}</div>
+          <div style={headerStatCard}>
+            <div style={headerStatLabel}>{tx('game_goal')}</div>
+            <div style={headerStatValue}>{target}</div>
           </div>
         </div>
         <button onClick={() => setModal('options')} style={{
@@ -1053,7 +1161,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       }}>
 
       {tab === 'anotar' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}> {/* Más compacto */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {game.players.map(p => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
@@ -1061,52 +1169,82 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             const isLeader = total === Math.max(...Object.values(game.totals)) && total > 0;
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
             const isBustDisabled = (scores[p] === '0' || scores[p] === '');
-            
+
             return (
               <div key={p} style={{
-                background: C.creamLight, border: `2.5px solid ${C.navy}`, borderRadius: 10,
-                padding: '6px 10px', boxShadow: '2px 2px 0 #00000010'
+                position: 'relative',
+                background: C.creamLight,
+                border: `2px solid ${C.navy}`,
+                borderRadius: 10,
+                padding: '5px 8px 8px',
+                boxShadow: '1px 1px 0 #00000010',
+                overflow: 'hidden',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {isLeader && <Crown size={17} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', lineHeight: 1.1 }}>
+                      {isLeader && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
+                      <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{p}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, flexShrink: 0 }}>{total}</span>
+                    </div>
+                    <div style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft, marginTop: 2, lineHeight: 1.2 }}>
+                      {tx('game_faltan')} {remaining}
+                    </div>
                   </div>
-                  <div style={{
-                    background: C.yellowDark, color: C.navy, fontFamily: F.display, fontSize: 14,
-                    padding: '2px 7px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold',
-                    boxShadow: `0 1px 0 ${C.yellowDeep}80`, lineHeight: 1.2, flexShrink: 0,
-                  }}>{tx('game_faltan')} {remaining}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={scores[p] ?? ''}
+                      onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
+                      onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
+                      onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="0"
+                      style={{
+                        width: 52,
+                        height: 30,
+                        boxSizing: 'border-box',
+                        background: C.white,
+                        border: `2px solid ${C.navy}`,
+                        borderRadius: 7,
+                        padding: '0 6px',
+                        textAlign: 'center',
+                        fontFamily: F.display,
+                        fontSize: 14,
+                        lineHeight: 1,
+                        color: C.navy,
+                        outline: 'none',
+                        boxShadow: `inset 1px 1px 0 ${C.creamDark}`,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }}
+                      style={{
+                        background: isBustDisabled ? `${C.red}40` : C.red,
+                        color: C.white,
+                        border: `2px solid ${C.navyDark}`,
+                        borderRadius: 7,
+                        height: 30,
+                        boxSizing: 'border-box',
+                        padding: '0 8px',
+                        cursor: isBustDisabled ? 'default' : 'pointer',
+                        fontFamily: F.display,
+                        fontSize: 8,
+                        letterSpacing: '0.5px',
+                        boxShadow: isBustDisabled ? 'none' : '1px 1px 0 #00000030',
+                        flexShrink: 0,
+                        opacity: isBustDisabled ? 0.7 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >BUST</button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 24, color: C.navy }}>{total}</span>
-                  <span style={{ fontFamily: F.body, fontSize: 10, color: C.inkSoft }}>/ {target}</span>
-                </div>
-                <div style={{ height: 6, background: C.creamDark, borderRadius: 999, border: `1.2px solid ${C.navy}`, overflow: 'hidden', marginBottom: 6 }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s', borderRadius: 999 }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, width: '100%', justifyContent: 'center' }}>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={scores[p] ?? ''}
-                    onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
-                    onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
-                    onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
-                    placeholder="0" style={{
-                      flex: 1, minWidth: 0, height: 36, boxSizing: 'border-box', background: C.white, border: `2px solid ${C.navy}`, borderRadius: 8,
-                      padding: '0 12px', textAlign: 'center', fontFamily: F.display, fontSize: 16, lineHeight: 1, color: C.navy,
-                      outline: 'none', boxShadow: `inset 1px 1px 0 ${C.creamDark}`
-                  }} />
-                  <button 
-                    type="button"
-                    onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }} 
-                    style={{
-                      background: isBustDisabled ? `${C.red}40` : C.red, 
-                      color: C.white, border: `2px solid ${C.navyDark}`, borderRadius: 8,
-                      height: 36, boxSizing: 'border-box', padding: '0 12px', cursor: isBustDisabled ? 'default' : 'pointer', 
-                      fontFamily: F.display, fontSize: 9, letterSpacing: '1px',
-                      boxShadow: isBustDisabled ? 'none' : '1.5px 1.5px 0 #00000030', 
-                      flexShrink: 0, opacity: isBustDisabled ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}
-                  >BUST</button>
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: C.creamDark }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.4s' }} />
                 </div>
               </div>
             );
@@ -1728,6 +1866,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
+  const [deletingPlayer, setDeletingPlayer] = useState(false);
   const wakeLockRef = useRef(null);
 
   useEffect(() => {
@@ -1834,11 +1973,19 @@ export default function App() {
   };
 
   const deleteSavedPlayer = async (name) => {
-    if (!name || !data.players[name] || data.games.some(g => g.players.includes(name))) return;
-    await removePlayerName(name);
-    const savedNames = await loadSavedPlayerNames();
-    setData({ ...data, players: mergeStatsWithSavedNames(recalculateStats(data.games), savedNames) });
-    setSelected(prev => prev.filter(p => p !== name));
+    if (!name || deletingPlayer) return;
+    setDeletingPlayer(true);
+    try {
+      const ok = await executeCascadePlayerDelete(name);
+      if (!ok) return;
+      const refreshed = await loadData();
+      setData(refreshed);
+      setSelected(prev => prev.filter(p => p !== name));
+    } catch (e) {
+      console.error('Error en borrado en cascada:', e);
+    } finally {
+      setDeletingPlayer(false);
+    }
   };
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
@@ -1910,6 +2057,13 @@ export default function App() {
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} tx={tx} />}
       {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} lang={lang} />}
       {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
+      {deletingPlayer && (
+        <Overlay>
+          <div style={{ textAlign: 'center', padding: 24, fontFamily: F.display, fontSize: 16, color: C.yellow, letterSpacing: '1.5px' }}>
+            {tx('setup_deleting')}
+          </div>
+        </Overlay>
+      )}
     </>
   );
 }
