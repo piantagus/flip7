@@ -1096,15 +1096,15 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     setTimeout(() => setScoreWarningConfirmed(false), 100);
   };
 
-  const headerStatLabel = { fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px', lineHeight: 1.2 };
-  const headerStatValue = { fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 };
+  const headerStatLabel = { fontFamily: F.display, fontSize: 7, color: C.navy, letterSpacing: '1.5px', lineHeight: 1.1 };
+  const headerStatValue = { fontFamily: F.display, fontSize: 22, color: C.navy, lineHeight: 1 };
   const headerStatCard = {
     flex: 1,
     minWidth: 0,
     background: C.yellow,
     border: `3px solid ${C.navy}`,
-    borderRadius: 12,
-    padding: '6px 14px',
+    borderRadius: 10,
+    padding: '4px 10px',
     boxShadow: shadowSm(),
     display: 'flex',
     flexDirection: 'column',
@@ -1113,7 +1113,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   return (
     <PageBg showEric={false}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flex: 1, minWidth: 0 }}>
           <div style={headerStatCard}>
             <div style={headerStatLabel}>{tx('game_round')}</div>
@@ -1165,7 +1165,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           {game.players.map(p => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
-            const remaining = Math.max(0, target - total);
             const isLeader = total === Math.max(...Object.values(game.totals)) && total > 0;
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
             const isBustDisabled = (scores[p] === '0' || scores[p] === '');
@@ -1182,16 +1181,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', lineHeight: 1.1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.1, minWidth: 0 }}>
                       {isLeader && <Crown size={14} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
-                      <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{p}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p}</span>
                       <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, flexShrink: 0 }}>{total}</span>
                     </div>
-                    <div style={{ fontFamily: F.body, fontSize: 11, color: C.inkSoft, marginTop: 2, lineHeight: 1.2 }}>
-                      {tx('game_faltan')} {remaining}
-                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1202,7 +1198,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                       placeholder="0"
                       style={{
-                        width: 52,
+                        width: 116,
                         height: 30,
                         boxSizing: 'border-box',
                         background: C.white,
