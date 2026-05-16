@@ -237,11 +237,24 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 
 function PageBg({ children, showEric = false }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
       <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 460, margin: '0 auto', padding: '10px 18px 20px', zIndex: 2 }}>
+      <div style={{
+        position: 'relative',
+        flex: 1,
+        minHeight: 0,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        overscrollBehavior: 'none',
+        WebkitOverflowScrolling: 'touch',
+        maxWidth: 460,
+        width: '100%',
+        margin: '0 auto',
+        padding: '10px 18px 20px',
+        zIndex: 2,
+      }}>
         {children}
         
         {/* Footer dinámico */}
@@ -545,7 +558,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
   if (qq) {
-    savedMatchSuggestions = existing.filter(p => !selected.includes(p) && foldForMatch(p).includes(qq));
+    savedMatchSuggestions = existing.filter(p => !selected.includes(p) && foldForMatch(p).startsWith(qq));
     savedMatchSuggestions.sort((a, b) => {
       const ap = foldForMatch(a).startsWith(qq);
       const bp = foldForMatch(b).startsWith(qq);
@@ -644,82 +657,73 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       )}
 
       {available.length > 0 && (
-        <Card style={{ padding: 14, marginBottom: 12 }}>
+        <Card style={{ padding: 10, marginBottom: 12 }}>
           <div style={{
             fontFamily: F.display,
-            fontSize: 14,
+            fontSize: 12,
             color: C.navy,
-            letterSpacing: '2.5px',
-            marginBottom: 8,
+            letterSpacing: '2px',
+            marginBottom: 6,
             textAlign: 'center',
           }}>{tx('setup_saved')}</div>
-          <div
-            style={{
-              background: 'rgba(255, 255, 255, 0.82)',
-              borderRadius: 12,
-              padding: 14,
-              border: '2px solid rgba(46, 58, 140, 0.14)',
-              boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(46, 58, 140, 0.06)`,
-            }}
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                columnGap: 12,
-                rowGap: 12,
-              }}
-            >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
               {available.map(p => (
-                <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <span
+                  key={p}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    maxWidth: '100%',
+                    background: C.cream,
+                    border: `2px solid ${C.navy}`,
+                    borderRadius: 999,
+                    boxShadow: '1px 1px 0 #00000012',
+                    overflow: 'hidden',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => add(p)}
                     style={{
-                      flex: 1,
-                      minWidth: 0,
-                      background: C.cream,
+                      border: 'none',
+                      background: 'transparent',
                       color: C.navy,
-                      border: `3px solid ${C.navy}`,
-                      borderRadius: 999,
-                      padding: '6px 10px',
+                      padding: '4px 6px 4px 8px',
                       fontFamily: F.body,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 5,
-                      boxShadow: '2px 2px 0 #00000015',
+                      gap: 4,
+                      minWidth: 0,
                     }}
                   >
-                    <Plus size={13} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                    <Plus size={11} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{p}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleTryDelete(p)}
+                    aria-label={tx('setup_delete')}
                     style={{
                       flexShrink: 0,
-                      background: `${C.red}20`,
+                      border: 'none',
+                      borderLeft: `1px solid ${C.navy}18`,
+                      background: 'transparent',
                       color: C.red,
-                      border: `3px solid ${C.red}`,
-                      borderRadius: 999,
-                      width: 34,
-                      height: 34,
+                      opacity: 0.55,
+                      padding: '4px 6px',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '2px 2px 0 #00000015',
                     }}
                   >
-                    <Trash2 size={14} strokeWidth={2.5} />
+                    <Trash2 size={11} strokeWidth={2.5} />
                   </button>
-                </div>
+                </span>
               ))}
-            </div>
           </div>
         </Card>
       )}
@@ -1706,14 +1710,36 @@ export default function App() {
   }, [game, scores, screen]);
 
   useEffect(() => {
+    if (!('wakeLock' in navigator)) return;
+
     const requestWakeLock = async () => {
-      if ('wakeLock' in navigator && screen === 'game') {
-        try { wakeLockRef.current = await navigator.wakeLock.request('screen'); } catch (err) { console.error(err); }
+      if (document.visibilityState !== 'visible') return;
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+      } catch (err) {
+        console.error(err);
       }
     };
+
+    const releaseWakeLock = () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    };
+
     requestWakeLock();
-    return () => { if (wakeLockRef.current) wakeLockRef.current.release(); };
-  }, [screen]);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      releaseWakeLock();
+    };
+  }, []);
 
   const openTargetPicker = () => { if (selected.length < 2) return; setTargetPickerOpen(true); };
   const startGame = (targetVal) => {
@@ -1791,12 +1817,22 @@ export default function App() {
           touch-action: manipulation;
           -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
+          height: 100%;
         }
         body {
           margin: 0;
           touch-action: manipulation;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
           overscroll-behavior-x: none;
-          overflow-x: hidden;
+          overflow: hidden;
+          height: 100%;
+        }
+        #root {
+          height: 100%;
+          overflow: hidden;
         }
         button { transition: transform 0.08s; }
         button:active { transform: translateY(2px) !important; }
