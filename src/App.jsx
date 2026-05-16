@@ -1008,8 +1008,12 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>{tx('game_round')}</div>
             <div style={{ fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 }}>{String(roundNum).padStart(2, '0')}</div>
           </div>
-          <div style={{ fontFamily: F.body, fontSize: 11, color: C.cream }}>
-            {tx('game_goal')}<br /><span style={{ fontFamily: F.display, fontSize: 18, color: C.yellow }}>{target}</span> <span style={{ fontSize: 10, color: C.cream }}>{tx('game_pts')}</span>
+          <div style={{
+            background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
+            padding: '6px 14px', boxShadow: shadowSm()
+          }}>
+            <div style={{ fontFamily: F.display, fontSize: 8, color: C.navy, letterSpacing: '2px' }}>{tx('game_goal')}</div>
+            <div style={{ fontFamily: F.display, fontSize: 28, color: C.navy, lineHeight: 1 }}>{target}</div>
           </div>
         </div>
         <button onClick={() => setModal('options')} style={{
@@ -1027,11 +1031,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <button key={tb.id} onClick={() => { setTab(tb.id); }} style={{
               flex: 1, padding: '12px 10px',
               background: active ? C.cream : C.tealDark,
-              color: active ? C.navy : C.cream,
+              color: active ? C.navy : C.creamLight,
               border: `4px solid ${C.navy}`,
               borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
-              fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', // +1 punto
+              fontFamily: F.display, fontSize: 15, letterSpacing: '1.5px',
+              fontWeight: active ? 400 : 600,
+              textShadow: active ? 'none' : `0 1px 2px ${C.tealShadow}, 0 0 1px ${C.navyDark}`,
               cursor: 'pointer',
               transform: active ? 'translateY(0)' : 'translateY(4px)',
               zIndex: active ? 4 : 2,
@@ -1067,9 +1073,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{p}</span>
                   </div>
                   <div style={{
-                    background: C.yellowDark, color: C.navy, fontFamily: F.display, fontSize: 12,
-                    padding: '1px 6px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold',
-                    boxShadow: `0 1px 0 ${C.yellowDeep}80`
+                    background: C.yellowDark, color: C.navy, fontFamily: F.display, fontSize: 14,
+                    padding: '2px 7px', borderRadius: 999, border: `1.2px solid ${C.navy}`, fontWeight: 'bold',
+                    boxShadow: `0 1px 0 ${C.yellowDeep}80`, lineHeight: 1.2, flexShrink: 0,
                   }}>{tx('game_faltan')} {remaining}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 3 }}>
@@ -1135,8 +1141,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: F.display, fontSize: 21, color: C.navy, lineHeight: 1 }}>{total}</div> {/* -1 pt */}
                   <div style={{ 
-                    fontFamily: F.display, fontSize: 11,
-                    color: barColor === C.yellow ? C.yellowDeep : barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 1 
+                    fontFamily: F.display, fontSize: 14,
+                    color: barColor === C.yellow ? C.yellowDeep : barColor, letterSpacing: '0.5px', fontWeight: 'bold', marginTop: 2, lineHeight: 1.2,
                   }}>{tx('game_faltan')} {remaining}</div>
                 </div>
               </div>
@@ -1327,9 +1333,37 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       )}
 
       {modal === 'addPlayer' && (() => {
-        const q = newPlayerName.trim().toLowerCase();
         const available = (existingPlayers || []).filter(p => !game.players.includes(p));
-        const suggestions = q ? available.filter(p => p.toLowerCase().includes(q)).slice(0, 5) : available.slice(0, 5);
+        const resolveStartPts = () => {
+          const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
+          if (newPlayerPoints === 'min') return minVal;
+          if (newPlayerPoints === 'custom') return Math.max(0, parseInt(newPlayerCustomPts, 10) || 0);
+          return 0;
+        };
+        const addResolvedPlayer = (nm) => {
+          const name = nm.trim();
+          if (!name || game.players.includes(name)) return;
+          onAddPlayer(name, resolveStartPts());
+          setModal(null);
+        };
+        const addPlayerInputStyle = {
+          width: '100%',
+          boxSizing: 'border-box',
+          background: C.white,
+          color: C.ink,
+          border: `3px solid ${C.navy}`,
+          borderRadius: 10,
+          padding: '12px 14px',
+          fontFamily: F.body,
+          fontSize: 16,
+          outline: 'none',
+          WebkitAppearance: 'none',
+          appearance: 'none',
+          WebkitTextFillColor: C.ink,
+          WebkitTextSizeAdjust: '100%',
+          touchAction: 'manipulation',
+          boxShadow: `inset 1px 1px 0 ${C.creamDark}`,
+        };
         return (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_add_p')}</div>
@@ -1340,20 +1374,47 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              border: `3px solid ${C.navy}`,
-              borderRadius: 10,
-              padding: '12px 14px',
-              marginBottom: 10,
-              fontFamily: F.body,
-              fontSize: 16,
-              color: C.ink,
-              WebkitTextSizeAdjust: '100%',
-              touchAction: 'manipulation'
-            }}
+            style={{ ...addPlayerInputStyle, marginBottom: available.length > 0 ? 8 : 10 }}
           />
+          {available.length > 0 && (
+            <>
+              <div style={{
+                fontFamily: F.display,
+                fontSize: 10,
+                color: C.navy,
+                letterSpacing: '1.5px',
+                marginBottom: 6,
+              }}>{tx('setup_saved')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {available.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => addResolvedPlayer(p)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: C.creamLight,
+                      color: C.navy,
+                      border: `2px solid ${C.navy}`,
+                      borderRadius: 999,
+                      padding: '4px 10px',
+                      fontFamily: F.body,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      boxShadow: '1px 1px 0 #00000012',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    <Plus size={11} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             {(() => {
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
@@ -1398,31 +1459,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               onChange={(e) => setNewPlayerCustomPts(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder={tx('game_ph_start')}
               style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                border: `3px solid ${C.navy}`,
-                borderRadius: 10,
-                padding: '10px 12px',
+                ...addPlayerInputStyle,
                 marginBottom: 14,
                 fontFamily: F.display,
-                fontSize: 16,
-                color: C.navy,
-                background: C.creamLight,
                 textAlign: 'center',
               }}
             />
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
-            <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => {
-              const nm = newPlayerName.trim();
-              const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
-              let pts = 0;
-              if (newPlayerPoints === 'min') pts = minVal;
-              else if (newPlayerPoints === 'custom') pts = Math.max(0, parseInt(newPlayerCustomPts, 10) || 0);
-              onAddPlayer(nm, pts);
-              setModal(null);
-            }}>{tx('game_add_btn')}</Btn>
+            <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => addResolvedPlayer(newPlayerName)}>{tx('game_add_btn')}</Btn>
           </div>
         </Card></Overlay>
         ); })()}
@@ -1837,6 +1883,8 @@ export default function App() {
         button { transition: transform 0.08s; }
         button:active { transform: translateY(2px) !important; }
         input:focus { box-shadow: 0 0 0 3px ${C.yellow}60 !important; }
+        input::placeholder { color: ${C.inkSoft}; opacity: 1; }
+        input::-webkit-input-placeholder { color: ${C.inkSoft}; opacity: 1; }
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
