@@ -259,6 +259,22 @@ function updatePlayerStats(players, game) {
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
 
+/** Resuelve fin de partida: empate entre quienes alcanzaron el objetivo, o ganador único. */
+function resolveEndGame(totals, players, target, tiebreak) {
+  if (tiebreak?.mode) {
+    const topScore = Math.max(...players.map(p => totals[p] || 0));
+    const leaders = players.filter(p => (totals[p] || 0) === topScore);
+    if (leaders.length > 1) return { type: 'tie', leaders };
+    return { type: 'win', winner: leaders[0] };
+  }
+  const qualified = players.filter(p => (totals[p] || 0) >= target);
+  if (qualified.length === 0) return { type: 'continue' };
+  const topScore = Math.max(...qualified.map(p => totals[p] || 0));
+  const leaders = qualified.filter(p => (totals[p] || 0) === topScore);
+  if (leaders.length > 1) return { type: 'tie', leaders };
+  return { type: 'win', winner: leaders[0] };
+}
+
 /** Cuenta cuántas rondas consecutivas con 0 puntos lleva ese jugador desde la última hacia atrás. */
 function trailingZeroStreakRounds(rounds, playerName) {
   let n = 0;
@@ -980,7 +996,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   );
 }
 
-function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, existingPlayers, tx, lang }) {
+function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onSetTiebreakMode, existingPlayers, tx, lang }) {
   const [tab, setTab] = useState('anotar');
   const [modal, setModal] = useState(null); 
   const [editingRound, setEditingRound] = useState(null);
@@ -991,6 +1007,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
   const [spicyAlert, setSpicyAlert] = useState(null);
+  const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
+  const inputRefs = useRef({});
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -1027,6 +1045,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const applyCloseRoundResult = (result) => {
     if (!result?.status || result.status === 'invalid') return;
     if (result?.status === 'tie') {
+      setTiebreakLeaders(result.leaders ?? game.tiebreak?.players ?? []);
       setModal('tiebreak');
       setTab('resultados');
       return;
@@ -1096,6 +1115,35 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     setTimeout(() => setScoreWarningConfirmed(false), 100);
   };
 
+  const scoringPlayers = game.tiebreak?.mode === 'tied_only'
+    ? game.players.filter(p => (game.tiebreak?.players ?? []).includes(p))
+    : game.players;
+
+  const focusScoreInput = (playerName) => {
+    inputRefs.current[playerName]?.focus();
+  };
+
+  const handleScoreKeyDown = (e, playerIndex) => {
+    if (e.key !== 'Enter') return;
+    const nextPlayer = scoringPlayers[playerIndex + 1];
+    if (nextPlayer) {
+      e.preventDefault();
+      focusScoreInput(nextPlayer);
+    } else {
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleScoresFormSubmit = (e) => {
+    e.preventDefault();
+  };
+
+  const handleTiebreakChoice = (mode) => {
+    onSetTiebreakMode(mode, tiebreakLeaders);
+    setModal(null);
+    setTab('anotar');
+  };
+
   const headerStatLabel = { fontFamily: F.display, fontSize: 7, color: C.navy, letterSpacing: '1.5px', lineHeight: 1.1 };
   const headerStatValue = { fontFamily: F.display, fontSize: 20, color: C.navy, lineHeight: 1 };
   const headerStatCard = {
@@ -1162,8 +1210,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       }}>
 
       {tab === 'anotar' && (<>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {game.players.map(p => {
+        <form onSubmit={handleScoresFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {scoringPlayers.map((p, idx) => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
             const isLeader = total === Math.max(...Object.values(game.totals)) && total > 0;
@@ -1190,13 +1238,17 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <input
+                      ref={(el) => { inputRefs.current[p] = el; }}
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      enterKeyHint={idx < scoringPlayers.length - 1 ? 'next' : 'done'}
+                      name={`score-${p}`}
                       value={scores[p] ?? ''}
                       onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
                       onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
                       onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
+                      onKeyDown={(e) => handleScoreKeyDown(e, idx)}
                       placeholder="0"
                       style={{
                         width: 120,
@@ -1246,7 +1298,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </div>
             );
           })}
-        </div>
+        </form>
         <div style={{ marginTop: 12 }}>
           <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
         </div>
@@ -1307,16 +1359,23 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         </Card></Overlay>
       )}
 
-      {modal === 'tiebreak' && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <AlertTriangle color={C.yellowDark} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_tie')}</div>
+      {modal === 'tiebreak' && tiebreakLeaders.length > 0 && (
+        <Overlay><Card style={{ padding: 22, maxWidth: 380, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <AlertTriangle color={C.red} size={24} />
+            <div style={{ fontFamily: F.display, fontSize: 18, color: C.red, letterSpacing: '1px' }}>{tx('game_tie_attn')}</div>
           </div>
-          <Btn onClick={() => {
-            setModal(null);
-            setTab('anotar');
-          }} style={{ fontSize: 14 }}>{tx('game_continue')}</Btn>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 18, lineHeight: 1.5 }}>
+            {tx('game_tie_body', { count: tiebreakLeaders.length, names: tiebreakLeaders.join(' · ') })}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Btn onClick={() => handleTiebreakChoice('all')} icon={Users} style={{ fontSize: 13, padding: '12px 10px' }}>
+              {tx('game_tie_all')}
+            </Btn>
+            <Btn onClick={() => handleTiebreakChoice('tied_only')} icon={Zap} variant="secondary" style={{ fontSize: 13, padding: '12px 10px' }}>
+              {tx('game_tie_tied_only')}
+            </Btn>
+          </div>
         </Card></Overlay>
       )}
 
@@ -1934,27 +1993,53 @@ export default function App() {
   };
 
   const closeRound = async () => {
-    const rs = {}; for (const p of game.players) { rs[p] = parseInt(scores[p], 10) || 0; }
+    const rs = {};
+    for (const p of game.players) {
+      if (game.tiebreak?.mode === 'tied_only' && !(game.tiebreak?.players ?? []).includes(p)) {
+        rs[p] = 0;
+      } else {
+        rs[p] = parseInt(scores[p], 10) || 0;
+      }
+    }
     const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
     const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
     const gameAfter = { ...game, rounds: nr, totals: nt };
-    if (game.players.some(p => nt[p] >= t)) {
-      const topScore = Math.max(...game.players.map(p => nt[p]));
-      const leaders = game.players.filter(p => nt[p] === topScore);
-      if (leaders.length > 1) {
-        setGame(gameAfter);
-        setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
-        return { status: 'tie', gameAfter };
-      }
-      const fin = { id: `g-${Date.now()}`, date: new Date().toISOString(), players: game.players, rounds: nr, finalScores: nt, targetScore: t, winner: leaders[0] };
+    const outcome = resolveEndGame(nt, game.players, t, game.tiebreak);
+
+    if (outcome.type === 'tie') {
+      const leaders = outcome.leaders;
+      setGame({
+        ...gameAfter,
+        tiebreak: { players: leaders, mode: game.tiebreak?.mode ?? null },
+      });
+      setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+      return { status: 'tie', leaders, gameAfter };
+    }
+    if (outcome.type === 'win') {
+      const fin = {
+        id: `g-${Date.now()}`,
+        date: new Date().toISOString(),
+        players: game.players,
+        rounds: nr,
+        finalScores: nt,
+        targetScore: t,
+        winner: outcome.winner,
+      };
       const savedGame = await insertGame(fin);
       if (!savedGame) return { status: 'save_error' };
-      setData({ players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] }); 
-      setCompletedGame(savedGame); setGame(null); setScreen('gameover');
+      setData({ players: updatePlayerStats(data.players, savedGame), games: [savedGame, ...data.games] });
+      setCompletedGame(savedGame);
+      setGame(null);
+      setScreen('gameover');
       return { status: 'finished' };
     }
-    setGame(gameAfter); setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+    setGame(gameAfter);
+    setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
     return { status: 'continued', gameAfter };
+  };
+
+  const setTiebreakMode = (mode, leaders) => {
+    setGame(g => (g ? { ...g, tiebreak: { players: leaders ?? g.tiebreak?.players ?? [], mode } } : g));
   };
 
   const goHome = () => { 
@@ -1987,7 +2072,7 @@ export default function App() {
   };
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
-  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])) }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
+  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])), tiebreak: undefined }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
   const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
   const modifyRound = (idx, newScores) => {
     if (!game) return;
@@ -2051,7 +2136,7 @@ export default function App() {
           </Card></Overlay>
         )}
       </>)}
-      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
+      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onSetTiebreakMode={setTiebreakMode} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} tx={tx} />}
       {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} lang={lang} />}
       {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
