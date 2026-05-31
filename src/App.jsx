@@ -760,79 +760,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       </Card>
       )}
 
-      {available.length > 0 && (
-        <Card style={{ padding: 10, marginBottom: 12 }}>
-          <div style={{
-            fontFamily: F.display,
-            fontSize: 12,
-            color: C.navy,
-            letterSpacing: '2px',
-            marginBottom: 6,
-            textAlign: 'center',
-          }}>{tx('setup_saved')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-              {available.map(p => (
-                <span
-                  key={p}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    maxWidth: '100%',
-                    background: C.cream,
-                    border: `2px solid ${C.navy}`,
-                    borderRadius: 999,
-                    boxShadow: '1px 1px 0 #00000012',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => add(p)}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: C.navy,
-                      padding: '4px 6px 4px 8px',
-                      fontFamily: F.body,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      minWidth: 0,
-                    }}
-                  >
-                    <Plus size={11} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>{p}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTryDelete(p)}
-                    aria-label={tx('setup_delete')}
-                    style={{
-                      flexShrink: 0,
-                      border: 'none',
-                      borderLeft: `1px solid ${C.navy}18`,
-                      background: 'transparent',
-                      color: C.red,
-                      opacity: 0.55,
-                      padding: '4px 6px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Trash2 size={11} strokeWidth={2.5} />
-                  </button>
-                </span>
-              ))}
-          </div>
-        </Card>
-      )}
-
-      <Card style={{ padding: 14, marginBottom: 14 }}>
+      <Card style={{ padding: 14, marginBottom: 12 }}>
         <div style={{
           fontFamily: F.display,
           fontSize: 14,
@@ -949,6 +877,94 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         </div>
       </Card>
 
+      {available.length > 0 && (
+        <Card style={{ padding: 10, marginBottom: 14 }}>
+          <div style={{
+            fontFamily: F.display,
+            fontSize: 12,
+            color: C.navy,
+            letterSpacing: '2px',
+            marginBottom: 8,
+            textAlign: 'center',
+          }}>{tx('setup_saved')}</div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 8,
+            justifyContent: 'center',
+            width: '100%',
+            margin: '0 auto',
+          }}>
+            {available.map(p => (
+              <div key={p} style={{ display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    paddingLeft: 10,
+                    paddingRight: 2,
+                    width: '100%',
+                    minWidth: 0,
+                    background: C.cream,
+                    border: `2px solid ${C.navy}`,
+                    borderRadius: 999,
+                    boxShadow: '1px 1px 0 #00000012',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => add(p)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: 'none',
+                      background: 'transparent',
+                      color: C.navy,
+                      padding: '5px 4px 5px 0',
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      gap: 4,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <Plus size={10} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTryDelete(p)}
+                    aria-label={tx('setup_delete')}
+                    style={{
+                      flexShrink: 0,
+                      border: 'none',
+                      borderLeft: `1px solid ${C.navy}18`,
+                      background: 'transparent',
+                      color: C.red,
+                      opacity: 0.55,
+                      padding: '5px 6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Trash2 size={10} strokeWidth={2.5} />
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Btn onClick={handleTryStart} disabled={selected.length < 2}>
         {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
       </Btn>
@@ -1008,7 +1024,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
-  const inputRefs = useRef({});
+  const inputRefs = useRef([]);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -1119,19 +1135,27 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     ? game.players.filter(p => (game.tiebreak?.players ?? []).includes(p))
     : game.players;
 
-  const focusScoreInput = (playerName) => {
-    inputRefs.current[playerName]?.focus();
+  const focusScoreInputAt = (idx) => {
+    const el = inputRefs.current[idx];
+    if (!el) return;
+    setTimeout(() => {
+      el.focus({ preventScroll: true });
+      el.select();
+    }, 0);
   };
 
-  const handleScoreKeyDown = (e, playerIndex) => {
+  const handleScoreKeyDown = (e, currentIdx) => {
     if (e.key !== 'Enter') return;
-    const nextPlayer = scoringPlayers[playerIndex + 1];
-    if (nextPlayer) {
-      e.preventDefault();
-      focusScoreInput(nextPlayer);
-    } else {
-      e.currentTarget.blur();
+    e.preventDefault();
+    e.stopPropagation();
+
+    const nextIdx = currentIdx + 1;
+    if (nextIdx < scoringPlayers.length) {
+      focusScoreInputAt(nextIdx);
+      return;
     }
+    e.currentTarget.blur();
+    handleCloseRound();
   };
 
   const handleScoresFormSubmit = (e) => {
@@ -1238,11 +1262,15 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <input
-                      ref={(el) => { inputRefs.current[p] = el; }}
+                      ref={(el) => {
+                        if (el) inputRefs.current[idx] = el;
+                        else delete inputRefs.current[idx];
+                      }}
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       enterKeyHint={idx < scoringPlayers.length - 1 ? 'next' : 'done'}
+                      autoComplete="off"
                       name={`score-${p}`}
                       value={scores[p] ?? ''}
                       onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
