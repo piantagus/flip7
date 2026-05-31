@@ -1631,7 +1631,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   <button
                     key={p}
                     type="button"
-                    onClick={() => addResolvedPlayer(p)}
+                    onClick={() => setNewPlayerName(p)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
