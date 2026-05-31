@@ -875,7 +875,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             <Plus size={22} strokeWidth={3} />
           </button>
         </div>
-        <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: 8, padding: '12px 16px' }}>
+        <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: 8, padding: '8px 16px' }}>
           {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
         </Btn>
       </Card>
