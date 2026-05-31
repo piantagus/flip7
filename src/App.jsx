@@ -723,9 +723,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
   return (
     <PageBg showEric={false}>
-      <HeaderBar title={tx('setup_title')} onBack={onBack} />
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 40px)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16, minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
+          <HeaderBar title={tx('setup_title')} onBack={onBack} />
 
-      {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
+          {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
             {tx('setup_last_q_before')}
@@ -965,9 +967,14 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         </Card>
       )}
 
-      <Btn onClick={handleTryStart} disabled={selected.length < 2}>
-        {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
-      </Btn>
+        </div>
+
+        <div style={{ position: 'sticky', bottom: 0, background: C.teal, paddingTop: 10, zIndex: 10, flexShrink: 0 }}>
+          <Btn onClick={handleTryStart} disabled={selected.length < 2}>
+            {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
+          </Btn>
+        </div>
+      </div>
 
       {confirmDeleteSaved && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
