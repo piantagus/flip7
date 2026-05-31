@@ -259,6 +259,25 @@ function updatePlayerStats(players, game) {
 }
 function recalculateStats(games) { let p = {}; for (const g of games) p = updatePlayerStats(p, g); return p; }
 
+/** Rank denso: empates comparten puesto; el siguiente puntaje distinto ocupa el siguiente entero (1,1,2,3…). */
+function buildDenseRanks(players, getScore) {
+  const sorted = [...players].sort((a, b) => getScore(b) - getScore(a));
+  const maxScore = sorted.length ? getScore(sorted[0]) : 0;
+  const meta = {};
+  let rank = 0;
+  let prevScore = null;
+  for (let i = 0; i < sorted.length; i++) {
+    const p = sorted[i];
+    const score = getScore(p);
+    if (i === 0 || score !== prevScore) {
+      rank += 1;
+      prevScore = score;
+    }
+    meta[p] = { rank, isLeader: maxScore > 0 && score === maxScore };
+  }
+  return { sorted, meta };
+}
+
 /** Resuelve fin de partida: empate entre quienes alcanzaron el objetivo, o ganador único. */
 function resolveEndGame(totals, players, target, tiebreak) {
   if (tiebreak?.mode) {
@@ -1027,7 +1046,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
-  const ranked = [...game.players].sort((a, b) => game.totals[b] - game.totals[a]);
+  const { sorted: ranked, meta: rankMeta } = buildDenseRanks(game.players, p => game.totals[p] ?? 0);
 
   const MAX_SCORE = 179;
   const WARN_SCORE = 70;
@@ -1237,7 +1256,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           {scoringPlayers.map((p, idx) => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
-            const isLeader = total === Math.max(...Object.values(game.totals)) && total > 0;
+            const isLeader = rankMeta[p]?.isLeader;
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
             const isBustDisabled = (scores[p] === '0' || scores[p] === '');
 
@@ -1333,19 +1352,20 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       {tab === 'resultados' && (<>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {ranked.map((p, i) => {
+          {ranked.map((p) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
+            const { rank, isLeader } = rankMeta[p];
             return (
               <div key={p} style={{ 
                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', 
                 background: C.creamLight, borderRadius: 10, borderBottom: `1.5px solid ${C.navy}10` 
               }}>
-                <RankBadge rank={i + 1} />
+                <RankBadge rank={rank} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {i === 0 && total > 0 && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
+                    {isLeader && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
                     <span style={{ fontFamily: F.display, fontSize: 21, color: C.navy }}>{p}</span> {/* -1 pt */}
                   </div>
                   <div style={{ height: 4, background: C.creamDark, borderRadius: 999, marginTop: 3, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
