@@ -723,11 +723,9 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
 
   return (
     <PageBg showEric={false}>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh - 40px)' }}>
-        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16, minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
-          <HeaderBar title={tx('setup_title')} onBack={onBack} />
+      <HeaderBar title={tx('setup_title')} onBack={onBack} />
 
-          {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
+      {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
             {tx('setup_last_q_before')}
@@ -762,16 +760,16 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       </Card>
       )}
 
-      <Card style={{ padding: 14, marginBottom: 12 }}>
+      <Card style={{ padding: '10px 12px', marginBottom: 10 }}>
         <div style={{
           fontFamily: F.display,
           fontSize: 14,
           color: C.navy,
           letterSpacing: '2.5px',
-          marginBottom: 8,
+          marginBottom: 4,
           textAlign: 'center',
         }}>{tx('setup_add_new')}</div>
-        <div ref={nameRowRef} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
             <input
               value={name}
@@ -783,13 +781,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
               spellCheck={false}
               style={{
                 width: '100%',
-                height: 50,
-                minHeight: 50,
+                height: 44,
+                minHeight: 44,
                 boxSizing: 'border-box',
                 background: C.creamLight,
                 border: '3px solid #000080',
                 borderRadius: 10,
-                padding: '0 14px',
+                padding: '0 12px',
                 fontFamily: F.body,
                 fontSize: 16,
                 lineHeight: '22px',
@@ -858,11 +856,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             onClick={addNew}
             style={{
               flexShrink: 0,
-              height: 50,
-              minHeight: 50,
-              minWidth: 52,
+              height: 44,
+              minHeight: 44,
+              minWidth: 48,
               boxSizing: 'border-box',
-              padding: '0 16px',
+              padding: '0 12px',
               background: C.yellow,
               border: '3px solid #000080',
               borderRadius: 10,
@@ -877,6 +875,9 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             <Plus size={22} strokeWidth={3} />
           </button>
         </div>
+        <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: 8, padding: '12px 16px' }}>
+          {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
+        </Btn>
       </Card>
 
       {available.length > 0 && (
@@ -966,15 +967,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
           </div>
         </Card>
       )}
-
-        </div>
-
-        <div style={{ position: 'sticky', bottom: 0, background: C.teal, paddingTop: 10, zIndex: 10, flexShrink: 0 }}>
-          <Btn onClick={handleTryStart} disabled={selected.length < 2}>
-            {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
-          </Btn>
-        </div>
-      </div>
 
       {confirmDeleteSaved && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
