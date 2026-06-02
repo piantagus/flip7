@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent, Languages } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent, Languages, Calculator } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -568,6 +568,150 @@ function RankBadge({ rank, size = 'sm' }) {
   );
 }
 
+/** Calculadora auxiliar de puntos (no modifica la partida). */
+function QuickCalcOverlay({ open, onClose, tx }) {
+  const [entry, setEntry] = useState('0');
+  const [accum, setAccum] = useState(0);
+  const [formula, setFormula] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setEntry('0');
+    setAccum(0);
+    setFormula('');
+  }, [open]);
+
+  if (!open) return null;
+
+  const parseEntry = () => parseInt(entry, 10) || 0;
+
+  const appendDigit = (d) => {
+    setEntry((e) => (e === '0' ? String(d) : `${e}${d}`));
+  };
+
+  const clearAll = () => {
+    setEntry('0');
+    setAccum(0);
+    setFormula('');
+  };
+
+  const handlePlus = () => {
+    const v = parseEntry();
+    const next = accum + v;
+    setAccum(next);
+    setFormula((f) => (f ? `${f} + ${v}` : String(v)));
+    setEntry('0');
+  };
+
+  const handleEquals = () => {
+    const total = accum + parseEntry();
+    setAccum(0);
+    setEntry(String(total));
+    setFormula('');
+  };
+
+  const handleMul2 = () => {
+    setEntry((e) => String((parseInt(e, 10) || 0) * 2));
+  };
+
+  const handlePlus15 = () => {
+    setEntry((e) => String((parseInt(e, 10) || 0) + 15));
+  };
+
+  const keyStyle = {
+    background: C.creamLight,
+    border: `3px solid ${C.navy}`,
+    borderRadius: 10,
+    fontFamily: F.display,
+    fontSize: 18,
+    color: C.navy,
+    cursor: 'pointer',
+    padding: '10px 4px',
+    minHeight: 44,
+    boxShadow: shadowSm(),
+  };
+  const actionStyle = { ...keyStyle, background: C.yellow };
+
+  return (
+    <Overlay>
+      <Card style={{ padding: 16, maxWidth: 320, width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Calculator size={20} color={C.navy} strokeWidth={2.5} />
+            <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1px' }}>{tx('game_calc_title')}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={tx('game_close')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: C.navy,
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+            }}
+          >
+            <X size={22} strokeWidth={3} />
+          </button>
+        </div>
+        <div style={{
+          background: C.navy,
+          border: `3px solid ${C.navyDark}`,
+          borderRadius: 10,
+          padding: '10px 12px',
+          marginBottom: 12,
+          minHeight: 56,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+        }}>
+          {formula ? (
+            <div style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              color: C.yellow,
+              opacity: 0.85,
+              textAlign: 'right',
+              marginBottom: 4,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>{formula}</div>
+          ) : null}
+          <div style={{
+            fontFamily: F.display,
+            fontSize: 32,
+            color: C.yellow,
+            textAlign: 'right',
+            lineHeight: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>{entry}</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+          <button type="button" onClick={clearAll} style={actionStyle}>C</button>
+          <button type="button" onClick={handlePlus15} style={actionStyle}>+15</button>
+          <button type="button" onClick={handleMul2} style={actionStyle}>×2</button>
+          <button type="button" onClick={handlePlus} style={actionStyle}>+</button>
+          {[7, 8, 9].map((d) => (
+            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
+          ))}
+          <button type="button" onClick={handleEquals} style={{ ...actionStyle, gridRow: 'span 3' }}>=</button>
+          {[4, 5, 6].map((d) => (
+            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
+          ))}
+          {[1, 2, 3].map((d) => (
+            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
+          ))}
+          <button type="button" onClick={() => appendDigit(0)} style={{ ...keyStyle, gridColumn: 'span 3' }}>0</button>
+        </div>
+      </Card>
+    </Overlay>
+  );
+}
+
 // ═══════ SCREENS ═══════
 
 function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx }) {
@@ -1042,6 +1186,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
+  const [isCalcOpen, setIsCalcOpen] = useState(false);
   const inputRefs = useRef([]);
 
   const roundNum = game.rounds.length + 1;
@@ -1204,18 +1349,48 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   return (
     <PageBg showEric={false}>
       <div style={{ paddingTop: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 26, gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 12, flex: 1, minWidth: 0 }}>
-          <div style={headerStatCard}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{ ...headerStatCard, flex: 1, padding: '4px 10px' }}>
             <div style={headerStatLabel}>{tx('game_round')}</div>
             <div style={headerStatValue}>{String(roundNum).padStart(2, '0')}</div>
+            <div style={{
+              fontFamily: F.body,
+              fontSize: 9,
+              fontWeight: 600,
+              color: C.navy,
+              lineHeight: 1.2,
+              marginTop: 2,
+              letterSpacing: '0.3px',
+            }}>
+              {tx('game_goal')}: {target} {tx('game_pts')}
+            </div>
           </div>
-          <div style={headerStatCard}>
-            <div style={headerStatLabel}>{tx('game_goal')}</div>
-            <div style={headerStatValue}>{target}</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsCalcOpen(true)}
+            aria-label={tx('game_calc_title')}
+            style={{
+              flexShrink: 0,
+              alignSelf: 'stretch',
+              width: 52,
+              minWidth: 52,
+              background: C.yellow,
+              border: `3px solid ${C.navy}`,
+              borderRadius: 12,
+              boxShadow: shadowSm(),
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+            }}
+          >
+            <Calculator size={24} strokeWidth={2.5} color={C.navy} />
+          </button>
         </div>
-        <button onClick={() => setModal('options')} style={{
+        <button type="button" onClick={() => setModal('options')} style={{
+          alignSelf: 'stretch',
           background: C.yellow, border: `2.5px solid ${C.navy}`, borderRadius: 8,
           padding: '8px 12px', cursor: 'pointer', boxShadow: shadowSm(),
           fontFamily: F.display, fontSize: 9, letterSpacing: '1px', color: C.navy,
@@ -1390,6 +1565,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </div>
 
       {/* Modales de alertas, empate, opciones se mantienen igual pero dentro de PageBg showEric=false */}
+      <QuickCalcOverlay open={isCalcOpen} onClose={() => setIsCalcOpen(false)} tx={tx} />
+
       {modal === 'flippeadorAlert' && flippeadorAlert && (
         <Overlay><Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
           <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>{tx('game_flip_title')}</div>
