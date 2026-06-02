@@ -633,9 +633,12 @@ function QuickCalcOverlay({ open, onClose, tx }) {
   const actionStyle = { ...keyStyle, background: C.yellow };
   const opKeyStyle = {
     ...actionStyle,
+    gridColumn: 4,
+    gridRow: 'auto',
+    alignSelf: 'stretch',
+    minHeight: 0,
     fontSize: 20,
     padding: '12px 4px',
-    alignSelf: 'stretch',
   };
 
   return (
@@ -700,11 +703,9 @@ function QuickCalcOverlay({ open, onClose, tx }) {
           <button type="button" onClick={clearAll} style={actionStyle}>C</button>
           <button type="button" onClick={handlePlus15} style={actionStyle}>+15</button>
           <button type="button" onClick={handleMul2} style={actionStyle}>×2</button>
-          <button type="button" onClick={handlePlus} style={opKeyStyle}>+</button>
           {[7, 8, 9].map((d) => (
             <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
           ))}
-          <button type="button" onClick={handleEquals} style={{ ...opKeyStyle, gridRow: 'span 3' }}>=</button>
           {[4, 5, 6].map((d) => (
             <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
           ))}
@@ -712,6 +713,8 @@ function QuickCalcOverlay({ open, onClose, tx }) {
             <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
           ))}
           <button type="button" onClick={() => appendDigit(0)} style={{ ...keyStyle, gridColumn: 'span 3' }}>0</button>
+          <button type="button" onClick={handlePlus} style={{ ...opKeyStyle, gridRow: '1 / 3' }}>+</button>
+          <button type="button" onClick={handleEquals} style={{ ...opKeyStyle, gridRow: '3 / 6' }}>=</button>
         </div>
       </Card>
     </Overlay>
