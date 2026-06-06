@@ -336,6 +336,38 @@ function foldForMatch(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+const SAVED_PLAYER_ALPHA_BUCKETS = [
+  { id: 'ag', label: 'A - G', test: (ch) => ch >= 'a' && ch <= 'g' },
+  { id: 'hm', label: 'H - M', test: (ch) => ch >= 'h' && ch <= 'm' },
+  { id: 'ns', label: 'N - S', test: (ch) => ch >= 'n' && ch <= 's' },
+  { id: 'tz', label: 'T - Z', test: (ch) => ch >= 't' && ch <= 'z' },
+];
+
+function savedPlayerInitialLetter(name) {
+  const folded = foldForMatch(name.trim());
+  const m = folded.match(/[a-z]/);
+  return m ? m[0] : '';
+}
+
+function groupSavedPlayersByAlpha(players) {
+  const buckets = SAVED_PLAYER_ALPHA_BUCKETS.map((b) => ({ ...b, players: [] }));
+  for (const p of players) {
+    const ch = savedPlayerInitialLetter(p);
+    const bucket = buckets.find((b) => b.test(ch));
+    (bucket ?? buckets[0]).players.push(p);
+  }
+  return buckets.filter((b) => b.players.length > 0);
+}
+
+const MS_24H = 24 * 60 * 60 * 1000;
+
+function isWithinLast24Hours(isoDate) {
+  if (!isoDate) return false;
+  const ts = Date.parse(isoDate);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts < MS_24H;
+}
+
 function fmtDate(iso, lang = 'es') {
   if (!iso) return '';
   try {
@@ -834,6 +866,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     .filter(p => !selected.includes(p))
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
+  const showLastGameReplay = lastGame
+    && lastGame.players?.length >= 2
+    && selected.length === 0
+    && isWithinLast24Hours(lastGame.date ?? lastGame.created_at);
+  const savedPlayerGroups = groupSavedPlayersByAlpha(available);
 
   const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
@@ -897,7 +934,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     <PageBg showEric={false}>
       <HeaderBar title={tx('setup_title')} onBack={onBack} />
 
-      {lastGame && lastGame.players?.length >= 2 && selected.length === 0 && (
+      {showLastGameReplay && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
             {tx('setup_last_q_before')}
@@ -1062,15 +1099,31 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             marginBottom: 8,
             textAlign: 'center',
           }}>{tx('setup_saved')}</div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: 8,
-            justifyContent: 'center',
-            width: '100%',
-            margin: '0 auto',
-          }}>
-            {available.map(p => (
+          {savedPlayerGroups.map((bucket) => (
+            <div key={bucket.id}>
+              <div style={{
+                borderTop: `1px solid rgba(46, 58, 140, 0.15)`,
+                paddingTop: 8,
+                marginBottom: 6,
+              }}>
+                <div style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: C.inkSoft,
+                  letterSpacing: '1px',
+                  lineHeight: 1.2,
+                }}>{bucket.label}</div>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 8,
+                justifyContent: 'center',
+                width: '100%',
+                margin: '0 auto 10px',
+              }}>
+                {bucket.players.map(p => (
               <div key={p} style={{ display: 'flex', justifyContent: 'center', minWidth: 0 }}>
                 <span
                   style={{
@@ -1135,8 +1188,10 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                   </button>
                 </span>
               </div>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </Card>
       )}
 
