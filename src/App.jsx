@@ -1090,104 +1090,101 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       </Card>
 
       {available.length > 0 && (
-        <Card style={{ padding: 10, marginBottom: 14 }}>
+        <Card style={{ padding: '8px 8px 6px', marginBottom: 12 }}>
           <div style={{
             fontFamily: F.display,
             fontSize: 12,
             color: C.navy,
             letterSpacing: '2px',
-            marginBottom: 8,
+            marginBottom: 4,
             textAlign: 'center',
           }}>{tx('setup_saved')}</div>
-          {savedPlayerGroups.map((bucket) => (
-            <div key={bucket.id}>
+          {savedPlayerGroups.map((bucket, bi) => (
+            <div key={bucket.id} style={{ marginBottom: bi < savedPlayerGroups.length - 1 ? 4 : 0 }}>
               <div style={{
                 borderTop: `1px solid rgba(46, 58, 140, 0.15)`,
-                paddingTop: 8,
-                marginBottom: 6,
+                paddingTop: 5,
+                marginBottom: 4,
               }}>
                 <div style={{
                   fontFamily: F.body,
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: 600,
                   color: C.inkSoft,
-                  letterSpacing: '1px',
-                  lineHeight: 1.2,
+                  letterSpacing: '0.8px',
+                  lineHeight: 1,
                 }}>{bucket.label}</div>
               </div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: 8,
-                justifyContent: 'center',
+                gap: 5,
                 width: '100%',
-                margin: '0 auto 10px',
               }}>
                 {bucket.players.map(p => (
-              <div key={p} style={{ display: 'flex', justifyContent: 'center', minWidth: 0 }}>
-                <span
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    textAlign: 'left',
-                    paddingLeft: 10,
-                    paddingRight: 2,
-                    width: '100%',
-                    minWidth: 0,
-                    background: C.cream,
-                    border: `2px solid ${C.navy}`,
-                    borderRadius: 999,
-                    boxShadow: '1px 1px 0 #00000012',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => add(p)}
+                  <span
+                    key={p}
                     style={{
-                      flex: 1,
-                      minWidth: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      color: C.navy,
-                      padding: '5px 4px 5px 0',
-                      fontFamily: F.body,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'flex-start',
-                      gap: 4,
                       textAlign: 'left',
+                      paddingLeft: 7,
+                      paddingRight: 1,
+                      width: '100%',
+                      minWidth: 0,
+                      background: C.cream,
+                      border: `2px solid ${C.navy}`,
+                      borderRadius: 999,
+                      boxShadow: '1px 1px 0 #00000012',
+                      overflow: 'hidden',
                     }}
                   >
-                    <Plus size={10} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTryDelete(p)}
-                    aria-label={tx('setup_delete')}
-                    style={{
-                      flexShrink: 0,
-                      border: 'none',
-                      borderLeft: `1px solid ${C.navy}18`,
-                      background: 'transparent',
-                      color: C.red,
-                      opacity: 0.55,
-                      padding: '5px 6px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Trash2 size={10} strokeWidth={2.5} />
-                  </button>
-                </span>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => add(p)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        border: 'none',
+                        background: 'transparent',
+                        color: C.navy,
+                        padding: '3px 2px 3px 0',
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        gap: 3,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTryDelete(p)}
+                      aria-label={tx('setup_delete')}
+                      style={{
+                        flexShrink: 0,
+                        border: 'none',
+                        borderLeft: `1px solid ${C.navy}18`,
+                        background: 'transparent',
+                        color: C.red,
+                        opacity: 0.55,
+                        padding: '3px 4px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Trash2 size={9} strokeWidth={2.5} />
+                    </button>
+                  </span>
                 ))}
               </div>
             </div>
