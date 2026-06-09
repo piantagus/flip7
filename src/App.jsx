@@ -1358,6 +1358,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const scoringPlayers = game.tiebreak?.mode === 'tied_only'
     ? game.players.filter(p => (game.tiebreak?.players ?? []).includes(p))
     : game.players;
+  const { sorted: scoringPlayersSorted, meta: scoringRankMeta } = buildDenseRanks(
+    scoringPlayers,
+    (p) => game.totals[p] ?? 0,
+  );
 
   const focusScoreInputAt = (idx) => {
     const el = inputRefs.current[idx];
@@ -1374,7 +1378,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     e.stopPropagation();
 
     const nextIdx = currentIdx + 1;
-    if (nextIdx < scoringPlayers.length) {
+    if (nextIdx < scoringPlayersSorted.length) {
       focusScoreInputAt(nextIdx);
       return;
     }
@@ -1489,10 +1493,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       {tab === 'anotar' && (<>
         <form onSubmit={handleScoresFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {scoringPlayers.map((p, idx) => {
+          {scoringPlayersSorted.map((p, idx) => {
             const total = game.totals[p];
             const pct = Math.min(100, (total / target) * 100);
-            const isLeader = rankMeta[p]?.isLeader;
+            const { rank, isLeader } = scoringRankMeta[p];
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
             const isBustDisabled = (scores[p] === '0' || scores[p] === '');
 
@@ -1510,6 +1514,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.1, minWidth: 0 }}>
                       {isLeader && <Crown size={13} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
+                      {!isLeader && rank === 2 && <RankBadge rank={2} />}
+                      {!isLeader && rank === 3 && <RankBadge rank={3} />}
                       <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p}</span>
                       <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy, flexShrink: 0 }}>{total}</span>
                     </div>
@@ -1523,7 +1529,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      enterKeyHint={idx < scoringPlayers.length - 1 ? 'next' : 'done'}
+                      enterKeyHint={idx < scoringPlayersSorted.length - 1 ? 'next' : 'done'}
                       autoComplete="off"
                       name={`score-${p}`}
                       value={scores[p] ?? ''}
