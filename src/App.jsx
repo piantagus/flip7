@@ -1539,13 +1539,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       onKeyDown={(e) => handleScoreKeyDown(e, idx)}
                       placeholder="0"
                       style={{
-                        width: 120,
+                        width: 52,
                         height: 32,
                         boxSizing: 'border-box',
                         background: C.white,
                         border: `2px solid ${C.navy}`,
                         borderRadius: 7,
-                        padding: '0 8px',
+                        padding: '0 4px',
                         textAlign: 'center',
                         fontFamily: F.display,
                         fontSize: 15,
