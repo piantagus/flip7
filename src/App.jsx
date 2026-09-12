@@ -874,6 +874,96 @@ function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
   );
 }
 
+const TARGET_PRESETS = [
+  { v: 200, badgeKey: 'badge_official' },
+  { v: 300, badgeKey: 'badge_rec' },
+  { v: 400, badgeKey: null },
+  { v: 500, badgeKey: null },
+];
+
+function TargetPickerOverlay({ onCancel, onConfirm, tx }) {
+  const [selectedVal, setSelectedVal] = useState(300);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customVal, setCustomVal] = useState('');
+
+  const customN = parseInt(customVal, 10);
+  const confirmDisabled = customOpen && !(customN > 0);
+
+  const handleConfirm = () => {
+    if (confirmDisabled) return;
+    onConfirm(customOpen ? customN : selectedVal);
+  };
+
+  return (
+    <Overlay>
+      <Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+        <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1.5px', marginBottom: 14, textAlign: 'center' }}>{tx('pick_target')}</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          {TARGET_PRESETS.map(({ v, badgeKey }) => {
+            const isSel = !customOpen && selectedVal === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => { setSelectedVal(v); setCustomOpen(false); }}
+                style={{
+                  position: 'relative',
+                  background: isSel ? C.yellow : C.cream,
+                  color: C.navy,
+                  border: `3px solid ${isSel ? C.navy : `${C.navy}30`}`,
+                  borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display,
+                }}
+              >
+                {badgeKey && <Badge text={tx(badgeKey)} />}
+                <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {!customOpen ? (
+          <button
+            type="button"
+            onClick={() => { setCustomOpen(true); setCustomVal(''); }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: 'transparent', border: `2px dashed ${C.navy}60`, borderRadius: 10,
+              padding: '7px 0', marginBottom: 14, cursor: 'pointer',
+              fontFamily: F.display, fontSize: 11, color: C.navy,
+            }}
+          >
+            {tx('pick_target_other')} <Edit3 size={12} strokeWidth={2.5} />
+          </button>
+        ) : (
+          <input
+            value={customVal}
+            onChange={(e) => setCustomVal(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder={tx('pick_target_other_ph')}
+            inputMode="numeric"
+            autoFocus
+            style={{
+              width: '100%', height: 44, minHeight: 44, boxSizing: 'border-box', marginBottom: 14,
+              background: C.creamLight, border: '3px solid #000080', borderRadius: 10,
+              padding: '0 12px', fontFamily: F.body, fontSize: 16, color: C.ink, textAlign: 'center', outline: 'none',
+            }}
+          />
+        )}
+
+        <Btn onClick={handleConfirm} disabled={confirmDisabled} style={{ marginBottom: 10 }}>
+          {tx('setup_start')}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: C.navy, color: C.yellow, borderRadius: 999,
+            fontFamily: F.display, fontSize: 12, marginLeft: 8, padding: '4px 10px',
+          }}>{customOpen ? (customVal || '—') : selectedVal} {tx('go_pts')}</span>
+        </Btn>
+        <button type="button" onClick={onCancel} style={{ width: '100%', background: 'transparent', border: 'none', color: C.inkSoft, fontFamily: F.body, fontSize: 14, fontWeight: 600, padding: '4px 0', cursor: 'pointer' }}>{tx('setup_cancel')}</button>
+      </Card>
+    </Overlay>
+  );
+}
+
 function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx }) {
   const [name, setName] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
@@ -2838,18 +2928,11 @@ export default function App() {
       )}
       {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} tx={tx} />}
       {targetPickerOpen && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('pick_target')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            {[{ v: 200, badgeKey: 'badge_official' }, { v: 300, badgeKey: 'badge_rec' }, { v: 400, badgeKey: null }, { v: 500, badgeKey: null }].map(({ v, badgeKey }) => (
-              <button key={v} onClick={() => startGame(v)} style={{ position: 'relative', background: C.yellow, color: C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
-                {badgeKey && <Badge text={tx(badgeKey)} />}
-                <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
-              </button>
-            ))}
-          </div>
-          <Btn onClick={() => setTargetPickerOpen(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
-        </Card></Overlay>
+        <TargetPickerOverlay
+          onCancel={() => setTargetPickerOpen(false)}
+          onConfirm={(v) => startGame(v)}
+          tx={tx}
+        />
       )}
       {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onSetTiebreakMode={setTiebreakMode} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} onRematchSame={rematchSame} onRematchEdit={() => setEditPlayersOpen(true)} tx={tx} />}
