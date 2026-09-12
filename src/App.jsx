@@ -1249,38 +1249,35 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       </div>
 
       {showLastGameReplay && (
-        <div
+        <button
+          type="button"
+          onClick={() => { setSelected([...lastGame.players].sort(byName)); setShowSelectedList(true); }}
           style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-            width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 14,
-            padding: '8px 10px', marginBottom: 12, boxShadow: shadow(C.navyDark, 3, 3),
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
+            background: C.navy, border: `3px solid ${C.cream}`, borderRadius: 12,
+            padding: '10px 14px', marginBottom: 12,
           }}
         >
+          <div style={{
+            width: 26, height: 26, borderRadius: 999, background: C.yellow, color: C.navy,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            border: `2px solid ${C.navyDark}`,
+          }}>
+            <RotateCcw size={14} strokeWidth={2.5} />
+          </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontFamily: F.display, fontSize: 9, letterSpacing: '1.5px', color: C.yellowDeep, marginBottom: 3 }}>
+            <div style={{ fontFamily: F.display, fontSize: 8, letterSpacing: '1.5px', color: C.yellow, marginBottom: 2 }}>
               {tx('setup_last_title')}
             </div>
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
               {lastGame.players.map(formatDisplayName).map((n, i) => (
-                <span key={i} style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.navy, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span key={i} style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.cream, whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {n}{i < lastGame.players.length - 1 ? ' ·' : ''}
                 </span>
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setSelected([...lastGame.players].sort(byName))}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-              background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
-              color: C.navy, fontFamily: F.display, fontSize: 12,
-            }}
-          >
-            <RotateCcw size={14} strokeWidth={2.5} />
-            {tx('setup_last_repeat')}
-          </button>
-        </div>
+        </button>
       )}
 
       {existing.length > 0 && (
