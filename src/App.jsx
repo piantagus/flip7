@@ -978,10 +978,10 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const contentRef = useRef(null);
   const engageRef = useRef(0);
   useEffect(() => {
-    if (headerRef.current && contentRef.current) {
+    if (headerRef.current && contentRef.current && !scrolled) {
       engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
     }
-  }, []);
+  });
 
   useEffect(() => {
     setSuggestionHoverIdx(null);
@@ -1099,7 +1099,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         <HeaderBar title={tx('setup_title')} onBack={handleBack} />
       </div>
 
-      <div ref={contentRef}>
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px', gap: 6 }}>
         {selected.length < 2 ? (
           selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
@@ -1114,7 +1113,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           </>
         )}
       </Btn>
-      </div>
 
       {selected.length > 0 && (
         <button
@@ -1168,6 +1166,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         </Card>
       )}
 
+      <div ref={contentRef}>
       <Card style={{ padding: '10px 12px', marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
@@ -1277,6 +1276,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           </button>
         </div>
       </Card>
+      </div>
 
       {!showAllSaved && (recentPlayers.length > 0 || remainingSavedCount > 0) && (
         <div style={{ marginBottom: 14 }}>
