@@ -2053,8 +2053,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   );
 }
 
-function GameOverScreen({ game, onHome, tx }) {
+function GameOverScreen({ game, onHome, onRematchSame, onRematchEdit, tx }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
+  const [showRematchOptions, setShowRematchOptions] = useState(false);
   useEffect(() => {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
     const t = setTimeout(() => { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }, 250);
@@ -2076,8 +2077,148 @@ function GameOverScreen({ game, onHome, tx }) {
           </div>
         ))}
       </Card>
-      <Btn onClick={onHome} icon={CardsIcon}>{tx('go_new')}</Btn>
+      {!showRematchOptions ? (
+        <>
+          <Btn onClick={() => setShowRematchOptions(true)} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_replay')}</Btn>
+          <Btn onClick={onHome} variant="secondary" icon={CardsIcon}>{tx('go_new')}</Btn>
+        </>
+      ) : (
+        <>
+          <Btn onClick={onRematchSame} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_same_players')}</Btn>
+          <Btn onClick={onRematchEdit} variant="secondary" icon={Edit3} style={{ marginBottom: 10 }}>{tx('go_edit_players')}</Btn>
+          <Btn onClick={() => setShowRematchOptions(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+        </>
+      )}
     </PageBg>
+  );
+}
+
+function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onClose, tx }) {
+  const [roster, setRoster] = useState(() => [...initialPlayers]);
+  const [name, setName] = useState('');
+  const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
+  const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const nameRowRef = useRef(null);
+
+  useEffect(() => {
+    const closeSuggestions = (e) => {
+      if (!nameRowRef.current?.contains(e.target)) setSuppressSavedSuggestions(true);
+    };
+    document.addEventListener('mousedown', closeSuggestions);
+    document.addEventListener('touchstart', closeSuggestions, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', closeSuggestions);
+      document.removeEventListener('touchstart', closeSuggestions);
+    };
+  }, []);
+
+  const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const rosterHasCi = (nm) => roster.some(s => foldForMatch(s) === foldForMatch(nm));
+
+  const qq = foldForMatch(name.trim());
+  let savedMatchSuggestions = [];
+  if (qq) {
+    savedMatchSuggestions = existing.filter(p => !roster.includes(p) && foldForMatch(p).startsWith(qq));
+    savedMatchSuggestions.sort((a, b) => {
+      const ap = foldForMatch(a).startsWith(qq);
+      const bp = foldForMatch(b).startsWith(qq);
+      if (ap !== bp) return ap ? -1 : 1;
+      return a.localeCompare(b, undefined, { sensitivity: 'base' });
+    });
+    savedMatchSuggestions = savedMatchSuggestions.slice(0, 12);
+  }
+  const showSavedSuggestions = qq.length > 0 && savedMatchSuggestions.length > 0 && !suppressSavedSuggestions;
+
+  const addNew = () => {
+    const t = name.trim(); if (!t) return;
+    const match = existing.find(p => foldForMatch(p) === foldForMatch(t));
+    const fn = match || t;
+    if (rosterHasCi(fn)) { setAlertMessage(tx('setup_dup')); return; }
+    setRoster([...roster, fn]); setName('');
+    setSuppressSavedSuggestions(true);
+    setSuggestionHoverIdx(null);
+    if (!match) onSavePlayer(fn);
+  };
+
+  const pickSuggestion = (p) => {
+    if (rosterHasCi(p)) { setAlertMessage(tx('setup_dup')); return; }
+    setRoster([...roster, p]); setName('');
+    setSuppressSavedSuggestions(true);
+    setSuggestionHoverIdx(null);
+  };
+
+  const removeFromRoster = (p) => setRoster(roster.filter(x => x !== p));
+
+  const handleConfirm = () => {
+    if (roster.length < 2) { setAlertMessage(tx('go_edit_need2')); return; }
+    onConfirm([...roster]);
+  };
+
+  return (
+    <Overlay>
+      <Card style={{ padding: 18, maxWidth: 340, width: '100%' }}>
+        <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 12 }}>{tx('go_edit_players_title')}</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12, maxHeight: 240, overflowY: 'auto' }}>
+          {roster.map((p, i) => (
+            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10, border: `2px solid ${C.yellow}60` }}>
+              <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
+              <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
+              <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}>
+                <Trash2 size={16} strokeWidth={3} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginBottom: 4 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); setSuppressSavedSuggestions(false); setSuggestionHoverIdx(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') addNew(); }}
+              placeholder={tx('setup_ph_name')}
+              autoComplete="off" autoCorrect="off" spellCheck={false}
+              style={{ width: '100%', height: 44, minHeight: 44, boxSizing: 'border-box', background: C.creamLight, border: '3px solid #000080', borderRadius: 10, padding: '0 12px', fontFamily: F.body, fontSize: 16, lineHeight: '22px', color: C.ink, outline: 'none', boxShadow: `inset 2px 2px 0 ${C.creamDark}` }}
+            />
+            {showSavedSuggestions && (
+              <div role="listbox" aria-label={tx('setup_saved')} onMouseLeave={() => setSuggestionHoverIdx(null)}
+                style={{ position: 'absolute', left: 0, right: 0, top: 'calc(100% + 2px)', zIndex: 80, background: C.creamLight, border: '3px solid #000080', borderRadius: 10, boxShadow: '0 4px 14px rgba(0, 0, 128, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)', maxHeight: 220, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                {savedMatchSuggestions.map((p, idx) => (
+                  <button key={p} type="button" role="option" aria-selected={suggestionHoverIdx === idx}
+                    onMouseEnter={() => setSuggestionHoverIdx(idx)} onTouchStart={() => setSuggestionHoverIdx(idx)}
+                    onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(p)}
+                    style={{ width: '100%', textAlign: 'left', border: 'none', borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : '1px solid rgba(0, 0, 128, 0.12)', background: suggestionHoverIdx === idx ? 'rgba(244, 212, 77, 0.42)' : 'transparent', padding: '11px 14px', fontFamily: F.body, fontSize: 15, fontWeight: 600, color: '#000080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.12s ease' }}>
+                    <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={addNew} style={{ flexShrink: 0, height: 44, minHeight: 44, minWidth: 48, boxSizing: 'border-box', padding: '0 12px', background: C.yellow, border: '3px solid #000080', borderRadius: 10, cursor: 'pointer', boxShadow: shadowSm(), color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Plus size={22} strokeWidth={3} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <Btn onClick={onClose} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+          <Btn onClick={handleConfirm} disabled={roster.length < 2}>{tx('go_edit_confirm')}</Btn>
+        </div>
+
+        {alertMessage && (
+          <Overlay><Card style={{ padding: 20, maxWidth: 300, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <AlertTriangle color={C.yellowDark} size={22} />
+              <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('setup_notice')}</div>
+            </div>
+            <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>{alertMessage}</div>
+            <Btn onClick={() => setAlertMessage(null)}>{tx('setup_ok')}</Btn>
+          </Card></Overlay>
+        )}
+      </Card>
+    </Overlay>
   );
 }
 
@@ -2214,6 +2355,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [completedGame, setCompletedGame] = useState(null);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
+  const [editPlayersOpen, setEditPlayersOpen] = useState(false);
   const [deletingPlayer, setDeletingPlayer] = useState(false);
   const wakeLockRef = useRef(null);
 
@@ -2275,6 +2417,17 @@ export default function App() {
   }, []);
 
   const openTargetPicker = () => { if (selected.length < 2) return; setTargetPickerOpen(true); };
+  const rematchSame = () => {
+    if (!completedGame) return;
+    setSelected([...completedGame.players]);
+    setEditPlayersOpen(false);
+    openTargetPicker();
+  };
+  const rematchWithRoster = (roster) => {
+    setSelected(roster);
+    setEditPlayersOpen(false);
+    openTargetPicker();
+  };
   const startGame = (targetVal) => {
     const newGame = { players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal };
     setGame(newGame);
@@ -2410,25 +2563,35 @@ export default function App() {
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
       {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
-      {screen === 'setup' && (<>
+      {screen === 'setup' && (
         <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onSavePlayer={savePlayerName} tx={tx} />
-        {targetPickerOpen && (
-          <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('pick_target')}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-              {[{ v: 200, badgeKey: 'badge_official' }, { v: 300, badgeKey: 'badge_rec' }, { v: 400, badgeKey: null }, { v: 500, badgeKey: null }].map(({ v, badgeKey }) => (
-                <button key={v} onClick={() => startGame(v)} style={{ position: 'relative', background: C.yellow, color: C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
-                  {badgeKey && <Badge text={tx(badgeKey)} />}
-                  <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
-                </button>
-              ))}
-            </div>
-            <Btn onClick={() => setTargetPickerOpen(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
-          </Card></Overlay>
-        )}
-      </>)}
+      )}
+      {targetPickerOpen && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('pick_target')}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {[{ v: 200, badgeKey: 'badge_official' }, { v: 300, badgeKey: 'badge_rec' }, { v: 400, badgeKey: null }, { v: 500, badgeKey: null }].map(({ v, badgeKey }) => (
+              <button key={v} onClick={() => startGame(v)} style={{ position: 'relative', background: C.yellow, color: C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
+                {badgeKey && <Badge text={tx(badgeKey)} />}
+                <div style={{ fontSize: 30, lineHeight: 1 }}>{v}</div>
+              </button>
+            ))}
+          </div>
+          <Btn onClick={() => setTargetPickerOpen(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+        </Card></Overlay>
+      )}
       {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onSetTiebreakMode={setTiebreakMode} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
-      {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} tx={tx} />}
+      {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} onRematchSame={rematchSame} onRematchEdit={() => setEditPlayersOpen(true)} tx={tx} />}
+      {editPlayersOpen && completedGame && (
+        <EditPlayersOverlay
+          initialPlayers={completedGame.players}
+          data={data}
+          onSavePlayer={savePlayerName}
+          onConfirm={rematchWithRoster}
+          onClose={() => setEditPlayersOpen(false)}
+          tx={tx}
+        />
+      )}
       {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} lang={lang} />}
       {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
       {deletingPlayer && (

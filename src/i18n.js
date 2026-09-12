@@ -126,6 +126,12 @@ export const LEX = {
     hist_del: '¿BORRAR?',
     go_new: 'NUEVA PARTIDA',
     go_pts: 'PTS',
+    go_replay: 'REPETIR PARTIDA',
+    go_same_players: 'EMPEZAR CON MISMOS JUGADORES',
+    go_edit_players: 'EDITAR JUGADORES',
+    go_edit_players_title: 'EDITAR JUGADORES',
+    go_edit_confirm: 'CONFIRMAR',
+    go_edit_need2: 'Necesitás al menos 2 jugadores para empezar.',
   },
   en: {
     home_stat_games: 'GAMES',
@@ -253,6 +259,12 @@ export const LEX = {
     hist_del: 'DELETE?',
     go_new: 'NEW GAME',
     go_pts: 'PTS',
+    go_replay: 'PLAY AGAIN',
+    go_same_players: 'START WITH SAME PLAYERS',
+    go_edit_players: 'EDIT PLAYERS',
+    go_edit_players_title: 'EDIT PLAYERS',
+    go_edit_confirm: 'CONFIRM',
+    go_edit_need2: 'You need at least 2 players to start.',
   },
 };
 
