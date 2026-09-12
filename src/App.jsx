@@ -336,6 +336,11 @@ function foldForMatch(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+/** Display-only formatting: capitalize each word, don't touch the stored name used for matching/selection. */
+function formatDisplayName(name) {
+  return name.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
+
 function savedPlayerInitialLetter(name) {
   const folded = foldForMatch(name.trim());
   const m = folded.match(/[a-z]/);
@@ -1144,7 +1149,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                 fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
               }}>
                 <Plus size={12} strokeWidth={3} />
-                {p}
+                {formatDisplayName(p)}
               </button>
             ))}
             {remainingSavedCount > 0 && (
