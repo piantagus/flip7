@@ -1024,18 +1024,17 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       )}
 
       {selected.length > 0 && showSelectedList && (
-      <Card style={{ padding: 12, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '1.5px', marginBottom: 8 }}>{tx('setup_in_game')} ({selected.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <Card style={{ padding: 10, marginBottom: 12 }}>
+        <div style={{ fontFamily: F.display, fontSize: 10, color: C.navy, letterSpacing: '1.5px', marginBottom: 6 }}>{tx('setup_in_game')} ({selected.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {selected.map((p, i) => (
               <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: C.navy, padding: '5px 6px 5px 5px', borderRadius: 999,
-                border: `2px solid ${C.yellow}50`
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: C.navy, padding: '4px 6px', borderRadius: 8,
               }}>
-                <div style={{ width: 18, height: 18, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 9, flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 13, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><X size={13} strokeWidth={3} /></button>
+                <div style={{ width: 16, height: 16, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}><X size={12} strokeWidth={3} /></button>
               </div>
             ))}
           </div>
@@ -2322,13 +2321,13 @@ function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onC
       <Card style={{ padding: 18, maxWidth: 340, width: '100%' }}>
         <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 12 }}>{tx('go_edit_players_title')}</div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12, maxHeight: 240, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 12, maxHeight: 240, overflowY: 'auto' }}>
           {roster.map((p, i) => (
-            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.navy, padding: '5px 6px 5px 5px', borderRadius: 999, border: `2px solid ${C.yellow}50` }}>
-              <div style={{ width: 18, height: 18, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 9, flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 13, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
-              <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}>
-                <Trash2 size={13} strokeWidth={3} />
+            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.navy, padding: '4px 6px', borderRadius: 8 }}>
+              <div style={{ width: 16, height: 16, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
+              <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}>
+                <Trash2 size={12} strokeWidth={3} />
               </button>
             </div>
           ))}
