@@ -2322,6 +2322,7 @@ function efficaciaPct(p) {
 
 function RankingsScreen({ data, onBack, tx, lang }) {
   const [tab, setTab] = useState('wins');
+  const [filter, setFilter] = useState('');
   const players = Object.values(data.players);
   const tabs = [
     { id: 'wins', label: tx('rk_wins'), icon: Trophy, sort: (a, b) => b.wins - a.wins, value: p => p.wins, suf: '' },
@@ -2343,10 +2344,29 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   ];
   const at = tabs.find(t => t.id === tab);
   const sorted = [...players].sort(at.sort);
+  const fq = foldForMatch(filter.trim());
+  const filtered = fq ? sorted.filter(p => foldForMatch(p.name).includes(fq)) : sorted;
 
   return (
     <PageBg showEric={false}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={tx('rk_filter_ph')}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{
+            width: '100%', height: 44, minHeight: 44, boxSizing: 'border-box',
+            background: C.creamLight, border: '3px solid #000080', borderRadius: 10,
+            padding: '0 12px 0 34px', fontFamily: F.body, fontSize: 16, lineHeight: '22px',
+            color: C.ink, outline: 'none', boxShadow: `inset 2px 2px 0 ${C.creamDark}`,
+          }}
+        />
+      </div>
       <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14, paddingBottom: 4, scrollbarWidth: 'none' }}>
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
@@ -2358,8 +2378,11 @@ function RankingsScreen({ data, onBack, tx, lang }) {
         })}
       </div>
       <Card style={{ padding: 6 }}>
-        {sorted.map((p, i) => (
-          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < sorted.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
+        {filtered.length === 0 && (
+          <div style={{ padding: '14px 6px', textAlign: 'center', fontFamily: F.body, fontSize: 13, color: C.inkSoft }}>{tx('rk_filter_empty')}</div>
+        )}
+        {filtered.map((p, i) => (
+          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < filtered.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
               <div>
