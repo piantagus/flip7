@@ -336,27 +336,26 @@ function foldForMatch(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-const SAVED_PLAYER_ALPHA_BUCKETS = [
-  { id: 'ag', label: 'A - G', test: (ch) => ch >= 'a' && ch <= 'g' },
-  { id: 'hm', label: 'H - M', test: (ch) => ch >= 'h' && ch <= 'm' },
-  { id: 'ns', label: 'N - S', test: (ch) => ch >= 'n' && ch <= 's' },
-  { id: 'tz', label: 'T - Z', test: (ch) => ch >= 't' && ch <= 'z' },
-];
-
 function savedPlayerInitialLetter(name) {
   const folded = foldForMatch(name.trim());
   const m = folded.match(/[a-z]/);
   return m ? m[0] : '';
 }
 
+/** Groups already-alphabetically-sorted players into one bucket per initial letter, each carrying its own count. */
 function groupSavedPlayersByAlpha(players) {
-  const buckets = SAVED_PLAYER_ALPHA_BUCKETS.map((b) => ({ ...b, players: [] }));
+  const groups = [];
   for (const p of players) {
     const ch = savedPlayerInitialLetter(p);
-    const bucket = buckets.find((b) => b.test(ch));
-    (bucket ?? buckets[0]).players.push(p);
+    const label = ch ? ch.toUpperCase() : '#';
+    let bucket = groups[groups.length - 1];
+    if (!bucket || bucket.label !== label) {
+      bucket = { id: label, label, players: [] };
+      groups.push(bucket);
+    }
+    bucket.players.push(p);
   }
-  return buckets.filter((b) => b.players.length > 0);
+  return groups;
 }
 
 const MS_24H = 24 * 60 * 60 * 1000;
@@ -1155,19 +1154,15 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
           }}>{tx('setup_saved')}</div>
           {savedPlayerGroups.map((bucket, bi) => (
             <div key={bucket.id} style={{ marginBottom: bi < savedPlayerGroups.length - 1 ? 4 : 0 }}>
-              <div style={{
-                borderTop: `1px solid rgba(46, 58, 140, 0.15)`,
-                paddingTop: 5,
-                marginBottom: 4,
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                 <div style={{
-                  fontFamily: F.body,
-                  fontSize: 8,
-                  fontWeight: 600,
-                  color: C.inkSoft,
-                  letterSpacing: '0.8px',
-                  lineHeight: 1,
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  background: C.navy, color: C.yellow,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: F.display, fontSize: 9,
                 }}>{bucket.label}</div>
+                <div style={{ flex: 1, height: 1, background: 'rgba(46, 58, 140, 0.15)' }} />
+                <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: C.inkSoft }}>{bucket.players.length}</div>
               </div>
               <div style={{
                 display: 'grid',
