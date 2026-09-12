@@ -950,12 +950,12 @@ function TargetPickerOverlay({ onCancel, onConfirm, tx }) {
           />
         )}
 
-        <Btn onClick={handleConfirm} disabled={confirmDisabled} style={{ marginBottom: 10 }}>
+        <Btn onClick={handleConfirm} disabled={confirmDisabled} style={{ marginBottom: 10, gap: 6, fontSize: 15 }}>
           {tx('setup_start')}
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            background: C.navy, color: C.yellow, borderRadius: 999,
-            fontFamily: F.display, fontSize: 12, marginLeft: 8, padding: '4px 10px',
+            background: C.navy, color: C.yellow, borderRadius: 999, whiteSpace: 'nowrap',
+            fontFamily: F.display, fontSize: 16, padding: '5px 12px',
           }}>{customOpen ? (customVal || '—') : selectedVal} {tx('go_pts')}</span>
         </Btn>
         <button type="button" onClick={onCancel} style={{ width: '100%', background: 'transparent', border: 'none', color: C.inkSoft, fontFamily: F.body, fontSize: 14, fontWeight: 600, padding: '4px 0', cursor: 'pointer' }}>{tx('setup_cancel')}</button>
@@ -1081,7 +1081,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     <PageBg showEric={false}>
       <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
-      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px' }}>
+      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px', gap: 6 }}>
         {selected.length < 2 ? (
           selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
         ) : (
@@ -1089,8 +1089,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             {tx('setup_start')}
             <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              minWidth: 24, height: 24, borderRadius: 999, background: C.navy, color: C.yellow,
-              fontFamily: F.display, fontSize: 12, marginLeft: 8, padding: '0 6px',
+              minWidth: 30, height: 30, borderRadius: 999, background: C.navy, color: C.yellow,
+              fontFamily: F.display, fontSize: 16, padding: '0 8px',
             }}>{selected.length}</span>
           </>
         )}
@@ -1120,11 +1120,12 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             {selected.map((p, i) => (
               <div key={p} style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: C.navy, padding: '4px 6px', borderRadius: 8,
+                background: C.creamLight, padding: '4px 6px', borderRadius: 8,
+                border: `1px solid ${C.navy}18`,
               }}>
-                <div style={{ width: 16, height: 16, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}><X size={12} strokeWidth={3} /></button>
+                <div style={{ width: 16, height: 16, borderRadius: 999, background: C.navy, color: C.yellow, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}><X size={12} strokeWidth={3} /></button>
               </div>
             ))}
           </div>
@@ -2413,10 +2414,10 @@ function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onC
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 12, maxHeight: 240, overflowY: 'auto' }}>
           {roster.map((p, i) => (
-            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.navy, padding: '4px 6px', borderRadius: 8 }}>
-              <div style={{ width: 16, height: 16, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.yellow, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
-              <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}>
+            <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.creamLight, padding: '4px 6px', borderRadius: 8, border: `1px solid ${C.navy}18` }}>
+              <div style={{ width: 16, height: 16, borderRadius: 999, background: C.navy, color: C.yellow, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
+              <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}>
                 <Trash2 size={12} strokeWidth={3} />
               </button>
             </div>
