@@ -3,6 +3,9 @@ export const LEX = {
   es: {
     home_stat_games: 'PARTIDAS',
     home_stat_players: 'JUGADORES',
+    home_players: 'JUGADORES',
+    players_title: 'JUGADORES',
+    players_empty: 'Todavía no guardaste ningún jugador.',
     home_new_game: 'NUEVA PARTIDA',
     home_rankings: 'ESTADISTICAS',
     home_history: 'HISTORIAL',
@@ -144,6 +147,9 @@ export const LEX = {
   en: {
     home_stat_games: 'GAMES',
     home_stat_players: 'PLAYERS',
+    home_players: 'PLAYERS',
+    players_title: 'PLAYERS',
+    players_empty: "You haven't saved any players yet.",
     home_new_game: 'NEW GAME',
     home_rankings: 'STATISTICS',
     home_history: 'HISTORY',

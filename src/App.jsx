@@ -759,7 +759,7 @@ function QuickCalcOverlay({ open, onClose, tx }) {
 
 // ═══════ SCREENS ═══════
 
-function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx }) {
+function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, setLang, tx }) {
   const [langOpen, setLangOpen] = useState(false);
   return (
     <PageBg showEric={true}>
@@ -821,6 +821,7 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx 
       </Card>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+        <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
         <Btn onClick={onNewGame} icon={CardsIcon} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_new_game')}</Btn>
         <Btn onClick={onRankings} variant="secondary" icon={Trophy} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rankings')}</Btn>
         <Btn onClick={onHistory} variant="secondary" icon={History} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_history')}</Btn>
@@ -873,9 +874,8 @@ function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
   );
 }
 
-function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer, tx }) {
+function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx }) {
   const [name, setName] = useState('');
-  const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
@@ -976,11 +976,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       return;
     }
     onStart();
-  };
-
-  const handleTryDelete = (p) => {
-    const gameCount = data.games.filter(g => g.players.includes(p)).length;
-    setConfirmDeleteSaved({ name: p, gameCount });
   };
 
   const handleBack = () => {
@@ -1208,15 +1203,17 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                 width: '100%',
               }}>
                 {bucket.players.map(p => (
-                  <span
+                  <button
                     key={p}
+                    type="button"
+                    onClick={() => add(p)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'flex-start',
                       textAlign: 'left',
                       paddingLeft: 7,
-                      paddingRight: 1,
+                      paddingRight: 6,
                       width: '100%',
                       minWidth: 0,
                       background: C.cream,
@@ -1224,53 +1221,18 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                       borderRadius: 999,
                       boxShadow: '1px 1px 0 #00000012',
                       overflow: 'hidden',
+                      color: C.navy,
+                      padding: '3px 6px 3px 7px',
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      gap: 3,
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => add(p)}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        border: 'none',
-                        background: 'transparent',
-                        color: C.navy,
-                        padding: '3px 2px 3px 0',
-                        fontFamily: F.body,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        gap: 3,
-                        textAlign: 'left',
-                      }}
-                    >
-                      <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTryDelete(p)}
-                      aria-label={tx('setup_delete')}
-                      style={{
-                        flexShrink: 0,
-                        border: 'none',
-                        borderLeft: `1px solid ${C.navy}18`,
-                        background: 'transparent',
-                        color: C.red,
-                        opacity: 0.55,
-                        padding: '3px 4px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Trash2 size={9} strokeWidth={2.5} />
-                    </button>
-                  </span>
+                    <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1281,19 +1243,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 8 }}>
         {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
       </Btn>
-
-      {confirmDeleteSaved && (
-        <DeleteSavedPlayerConfirm
-          info={confirmDeleteSaved}
-          onCancel={() => setConfirmDeleteSaved(null)}
-          onConfirm={() => {
-            const { name } = confirmDeleteSaved;
-            setConfirmDeleteSaved(null);
-            onDeleteSavedPlayer(name);
-          }}
-          tx={tx}
-        />
-      )}
 
       {alertMessage && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
@@ -1322,6 +1271,88 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             <Btn onClick={() => { setConfirmLeave(false); onBack(); }} variant="danger">{tx('setup_leave_confirm')}</Btn>
           </div>
         </Card></Overlay>
+      )}
+    </PageBg>
+  );
+}
+
+function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
+  const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
+  const names = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const groups = groupSavedPlayersByAlpha(names);
+
+  const handleTryDelete = (p) => {
+    const gameCount = data.games.filter(g => g.players.includes(p)).length;
+    setConfirmDeleteSaved({ name: p, gameCount });
+  };
+
+  return (
+    <PageBg showEric={false}>
+      <HeaderBar title={tx('players_title')} onBack={onBack} />
+
+      {names.length === 0 ? (
+        <Card style={{ padding: 20 }}>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, textAlign: 'center' }}>{tx('players_empty')}</div>
+        </Card>
+      ) : (
+        <Card style={{ padding: '8px 8px 6px' }}>
+          {groups.map((bucket, bi) => (
+            <div key={bucket.id} style={{ marginBottom: bi < groups.length - 1 ? 4 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                <div style={{
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  background: C.navy, color: C.yellow,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: F.display, fontSize: 9,
+                }}>{bucket.label}</div>
+                <div style={{ flex: 1, height: 1, background: 'rgba(46, 58, 140, 0.15)' }} />
+                <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: C.inkSoft }}>{bucket.players.length}</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 5, width: '100%' }}>
+                {bucket.players.map(p => (
+                  <span key={p} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left',
+                    paddingLeft: 7, paddingRight: 1, width: '100%', minWidth: 0,
+                    background: C.cream, border: `2px solid ${C.navy}`, borderRadius: 999,
+                    boxShadow: '1px 1px 0 #00000012', overflow: 'hidden',
+                  }}>
+                    <span style={{
+                      flex: 1, minWidth: 0, color: C.navy, padding: '5px 2px 5px 0',
+                      fontFamily: F.body, fontSize: 11, fontWeight: 600,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{p}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleTryDelete(p)}
+                      aria-label={tx('setup_delete')}
+                      style={{
+                        flexShrink: 0, border: 'none', borderLeft: `1px solid ${C.navy}18`,
+                        background: 'transparent', color: C.red, opacity: 0.55,
+                        padding: '3px 4px', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <Trash2 size={9} strokeWidth={2.5} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {confirmDeleteSaved && (
+        <DeleteSavedPlayerConfirm
+          info={confirmDeleteSaved}
+          onCancel={() => setConfirmDeleteSaved(null)}
+          onConfirm={() => {
+            const { name } = confirmDeleteSaved;
+            setConfirmDeleteSaved(null);
+            onDeleteSavedPlayer(name);
+          }}
+          tx={tx}
+        />
       )}
     </PageBg>
   );
@@ -2678,10 +2709,11 @@ export default function App() {
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} />}
+      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} />}
       {screen === 'setup' && (
-        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onSavePlayer={savePlayerName} tx={tx} />
+        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} />
       )}
+      {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} tx={tx} />}
       {targetPickerOpen && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('pick_target')}</div>
