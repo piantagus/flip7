@@ -972,15 +972,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const [showSelectedList, setShowSelectedList] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
-  const [scrolled, setScrolled] = useState(false);
-  const headerRef = useRef(null);
-  const contentRef = useRef(null);
-  const engageRef = useRef(0);
-  useEffect(() => {
-    if (headerRef.current && contentRef.current && !scrolled) {
-      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
-    }
-  });
 
   useEffect(() => {
     setSuggestionHoverIdx(null);
@@ -1073,17 +1064,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   let cardAnimIdx = 0;
 
   return (
-    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
-      <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
-        borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
-      }}>
-        <HeaderBar title={tx('setup_title')} onBack={handleBack} />
-      </div>
+    <PageBg showEric={false}>
+      <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px', gap: 6 }}>
         {selected.length < 2 ? (
@@ -1136,7 +1118,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       </Card>
       )}
 
-      <div ref={contentRef}>
       <Card style={{ padding: '10px 12px', marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
@@ -1246,7 +1227,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           </button>
         </div>
       </Card>
-      </div>
 
       {showLastGameReplay && (
         <button
