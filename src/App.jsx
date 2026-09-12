@@ -2856,9 +2856,8 @@ export default function App() {
     setGame(g => (g ? { ...g, tiebreak: { players: leaders ?? g.tiebreak?.players ?? [], mode } } : g));
   };
 
-  const goHome = () => { 
-    if (game && screen === 'game' && !window.confirm(Tx(lang, 'confirm_abandon'))) return;
-    setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home'); 
+  const goHome = () => {
+    setSelected([]); setGame(null); setScores({}); setCompletedGame(null); setScreen('home');
   };
 
   const deleteGame = async (id) => {
