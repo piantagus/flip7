@@ -45,8 +45,6 @@ const F = {
 
 const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
-/** Wallet-style stacked/peeking cards: each item sticks a bit lower than the previous and paints over it. */
-const stackStyle = (i, peek) => ({ position: 'sticky', top: i * peek, zIndex: i + 1 });
 
 // ═══════ STORAGE ═══════
 function emptyPlayerStats(name) {
@@ -1667,6 +1665,12 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   return (
     <PageBg showEric={false}>
       <div style={{ paddingTop: 24 }}>
+      <div style={{
+        position: 'sticky', top: -10, zIndex: 20,
+        margin: '-10px -18px 0', padding: '10px 18px 6px',
+        background: C.teal, borderRadius: '0 0 22px 22px',
+        boxShadow: `0 4px 10px ${C.navyDark}40`,
+      }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flex: 1, minWidth: 0 }}>
           <div style={{ ...headerStatCard, flex: 1, padding: '4px 10px' }}>
@@ -1737,6 +1741,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             }}>{tb.label}</button>
           );
         })}
+      </div>
       </div>
 
       <div style={{
@@ -1847,7 +1852,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       {tab === 'resultados' && (<>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {ranked.map((p, pi) => {
+          {ranked.map((p) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
@@ -1856,7 +1861,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               <div key={p} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px',
                 background: C.creamLight, borderRadius: 10, borderBottom: `1.5px solid ${C.navy}10`,
-                ...stackStyle(pi, 34),
               }}>
                 <RankBadge rank={rank} />
                 <div style={{ flex: 1 }}>
@@ -2543,6 +2547,12 @@ function RankingsScreen({ data, onBack, tx, lang }) {
 
   return (
     <PageBg showEric={false}>
+      <div style={{
+        position: 'sticky', top: -10, zIndex: 60,
+        margin: '-10px -18px 0', padding: '10px 18px 6px',
+        background: C.teal, borderRadius: 22,
+        boxShadow: `0 4px 10px ${C.navyDark}40`,
+      }}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
       <div ref={queryRowRef} style={{ position: 'relative', marginBottom: selectedNames.length > 0 ? 8 : 12, zIndex: showSuggestions ? 70 : 1 }}>
         <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
@@ -2615,7 +2625,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
           </button>
         </div>
       )}
-      <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14, paddingBottom: 4, scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
           return (
@@ -2625,18 +2635,14 @@ function RankingsScreen({ data, onBack, tx, lang }) {
           );
         })}
       </div>
-      {filtered.length === 0 && (
-        <Card style={{ padding: 6 }}>
+      </div>
+      <div style={{ marginTop: 14 }}>
+      <Card style={{ padding: 6 }}>
+        {filtered.length === 0 && (
           <div style={{ padding: '14px 6px', textAlign: 'center', fontFamily: F.body, fontSize: 13, color: C.inkSoft }}>{tx('rk_filter_empty')}</div>
-        </Card>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        )}
         {filtered.map((p, i) => (
-          <div key={p.name} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px',
-            background: C.creamLight, borderRadius: 10,
-            ...stackStyle(i, 30),
-          }}>
+          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < filtered.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
               <div>
@@ -2665,6 +2671,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
             </div>
           </div>
         ))}
+      </Card>
       </div>
     </PageBg>
   );
@@ -2675,12 +2682,19 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   return (
     <PageBg showEric={false}>
-      <HeaderBar title={tx('hist_title')} onBack={onBack} />
+      <div style={{
+        position: 'sticky', top: -10, zIndex: 10,
+        margin: '-10px -18px 0', padding: '10px 18px 6px',
+        background: C.teal, borderRadius: 22,
+        boxShadow: `0 4px 10px ${C.navyDark}40`,
+      }}>
+        <HeaderBar title={tx('hist_title')} onBack={onBack} />
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {games.map((g, gi) => {
+        {games.map(g => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
           return (
-            <Card key={g.id} style={{ padding: 6, ...stackStyle(gi, 38) }}>
+            <Card key={g.id} style={{ padding: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 11, fontFamily: F.body, color: C.inkSoft }}>{fmtDate(g.date, lang)}</span></div>
                 <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
