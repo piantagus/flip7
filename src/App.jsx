@@ -45,6 +45,8 @@ const F = {
 
 const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
+/** Wallet-style stacked/peeking cards: each item sticks a bit lower than the previous and paints over it. */
+const stackStyle = (i, peek) => ({ position: 'sticky', top: i * peek, zIndex: i + 1 });
 
 // ═══════ STORAGE ═══════
 function emptyPlayerStats(name) {
@@ -1845,15 +1847,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       {tab === 'resultados' && (<>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {ranked.map((p) => {
+          {ranked.map((p, pi) => {
             const total = game.totals[p]; const remaining = Math.max(0, target - total);
             const pct = Math.min(100, (total / target) * 100);
             const barColor = pct < 40 ? C.red : pct < 75 ? C.yellow : C.green;
             const { rank, isLeader } = rankMeta[p];
             return (
-              <div key={p} style={{ 
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', 
-                background: C.creamLight, borderRadius: 10, borderBottom: `1.5px solid ${C.navy}10` 
+              <div key={p} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px',
+                background: C.creamLight, borderRadius: 10, borderBottom: `1.5px solid ${C.navy}10`,
+                ...stackStyle(pi, 34),
               }}>
                 <RankBadge rank={rank} />
                 <div style={{ flex: 1 }}>
@@ -2622,12 +2625,18 @@ function RankingsScreen({ data, onBack, tx, lang }) {
           );
         })}
       </div>
-      <Card style={{ padding: 6 }}>
-        {filtered.length === 0 && (
+      {filtered.length === 0 && (
+        <Card style={{ padding: 6 }}>
           <div style={{ padding: '14px 6px', textAlign: 'center', fontFamily: F.body, fontSize: 13, color: C.inkSoft }}>{tx('rk_filter_empty')}</div>
-        )}
+        </Card>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {filtered.map((p, i) => (
-          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < filtered.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
+          <div key={p.name} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px',
+            background: C.creamLight, borderRadius: 10,
+            ...stackStyle(i, 30),
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
               <div>
@@ -2656,7 +2665,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
             </div>
           </div>
         ))}
-      </Card>
+      </div>
     </PageBg>
   );
 }
@@ -2668,10 +2677,10 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
     <PageBg showEric={false}>
       <HeaderBar title={tx('hist_title')} onBack={onBack} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {games.map(g => {
+        {games.map((g, gi) => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
           return (
-            <Card key={g.id} style={{ padding: 6 }}>
+            <Card key={g.id} style={{ padding: 6, ...stackStyle(gi, 38) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 11, fontFamily: F.body, color: C.inkSoft }}>{fmtDate(g.date, lang)}</span></div>
                 <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
