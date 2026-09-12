@@ -1254,24 +1254,24 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           onClick={() => { setSelected([...lastGame.players].sort(byName)); setShowSelectedList(true); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
-            background: C.navy, border: `3px solid ${C.cream}`, borderRadius: 12,
-            padding: '10px 14px', marginBottom: 12,
+            background: C.cream, border: `3px solid ${C.navy}`, borderRadius: 12,
+            padding: '10px 14px', marginBottom: 12, boxShadow: shadowSm(),
           }}
         >
           <div style={{
             width: 26, height: 26, borderRadius: 999, background: C.yellow, color: C.navy,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            border: `2px solid ${C.navyDark}`,
+            border: `2px solid ${C.navy}`,
           }}>
             <RotateCcw size={14} strokeWidth={2.5} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontFamily: F.display, fontSize: 8, letterSpacing: '1.5px', color: C.yellow, marginBottom: 2 }}>
+            <div style={{ fontFamily: F.display, fontSize: 8, letterSpacing: '1.5px', color: C.navy, marginBottom: 2 }}>
               {tx('setup_last_title')}
             </div>
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
               {lastGame.players.map(formatDisplayName).map((n, i) => (
-                <span key={i} style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.cream, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span key={i} style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.navy, whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {n}{i < lastGame.players.length - 1 ? ' ·' : ''}
                 </span>
               ))}
