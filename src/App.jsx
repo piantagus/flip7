@@ -1680,10 +1680,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
         backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
-        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flex: 1, minWidth: 0 }}>
@@ -2579,10 +2576,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
         backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
-        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
       <div ref={queryRowRef} style={{ position: 'relative', marginBottom: selectedNames.length > 0 ? 8 : 12, zIndex: showSuggestions ? 70 : 1 }}>
@@ -2728,10 +2722,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
         backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
-        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
-        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
         <HeaderBar title={tx('hist_title')} onBack={onBack} />
       </div>
