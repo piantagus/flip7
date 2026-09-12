@@ -836,6 +836,38 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, lang, setLang, tx 
   );
 }
 
+function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
+  const [countdown, setCountdown] = useState(() => (info.gameCount > 0 ? 2 : 0));
+
+  useEffect(() => {
+    if (countdown === 0) return;
+    const t = setTimeout(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  return (
+    <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <AlertTriangle color={C.red} size={22} />
+        <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>
+          {info.gameCount > 0 ? tx('setup_delete_cascade_title') : tx('setup_sure')}
+        </div>
+      </div>
+      <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
+        {info.gameCount > 0
+          ? tx('setup_delete_cascade', { name: info.name, count: info.gameCount })
+          : tx('setup_delete_confirm', { name: info.name })}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Btn onClick={onCancel} variant="secondary">{tx('setup_cancel')}</Btn>
+        <Btn onClick={onConfirm} variant="danger" disabled={countdown > 0}>
+          {countdown > 0 ? `${tx('setup_delete')} (${countdown})` : tx('setup_delete')}
+        </Btn>
+      </div>
+    </Card></Overlay>
+  );
+}
+
 function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSavedPlayer, onSavePlayer, tx }) {
   const [name, setName] = useState('');
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
@@ -1246,30 +1278,16 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       </Btn>
 
       {confirmDeleteSaved && (
-        <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <AlertTriangle color={C.red} size={22} />
-            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>
-              {confirmDeleteSaved.gameCount > 0 ? tx('setup_delete_cascade_title') : tx('setup_sure')}
-            </div>
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
-            {confirmDeleteSaved.gameCount > 0
-              ? tx('setup_delete_cascade', { name: confirmDeleteSaved.name, count: confirmDeleteSaved.gameCount })
-              : tx('setup_delete_confirm', { name: confirmDeleteSaved.name })}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDeleteSaved(null)} variant="secondary">{tx('setup_cancel')}</Btn>
-            <Btn
-              onClick={() => {
-                const { name } = confirmDeleteSaved;
-                setConfirmDeleteSaved(null);
-                onDeleteSavedPlayer(name);
-              }}
-              variant="danger"
-            >{tx('setup_delete')}</Btn>
-          </div>
-        </Card></Overlay>
+        <DeleteSavedPlayerConfirm
+          info={confirmDeleteSaved}
+          onCancel={() => setConfirmDeleteSaved(null)}
+          onConfirm={() => {
+            const { name } = confirmDeleteSaved;
+            setConfirmDeleteSaved(null);
+            onDeleteSavedPlayer(name);
+          }}
+          tx={tx}
+        />
       )}
 
       {alertMessage && (
