@@ -1678,7 +1678,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         position: 'sticky', top: scrolled ? -10 : -2, zIndex: 20,
         margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -2574,7 +2574,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
         position: 'sticky', top: scrolled ? -10 : -2, zIndex: 60,
         margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -2720,7 +2720,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
         position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
         margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
         padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
