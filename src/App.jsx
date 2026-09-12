@@ -1667,9 +1667,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{ paddingTop: 24 }}>
       <div style={{
-        position: 'sticky', top: -10, zIndex: 20,
-        margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: scrolled ? '0 0 22px 22px' : 0,
+        position: 'sticky', top: -2, zIndex: 20,
+        margin: '-2px -10px 0', padding: '2px 10px 6px',
+        background: C.teal, borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
@@ -2550,9 +2550,9 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{
-        position: 'sticky', top: -10, zIndex: 60,
-        margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: scrolled ? 22 : 0,
+        position: 'sticky', top: -2, zIndex: 60,
+        margin: '-2px -10px 0', padding: '2px 10px 6px',
+        background: C.teal, borderRadius: scrolled ? 20 : 0,
         boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
@@ -2686,9 +2686,9 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{
-        position: 'sticky', top: -10, zIndex: 10,
-        margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: scrolled ? 22 : 0,
+        position: 'sticky', top: -2, zIndex: 10,
+        margin: '-2px -10px 0', padding: '2px 10px 6px',
+        background: C.teal, borderRadius: scrolled ? 20 : 0,
         boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
         <HeaderBar title={tx('hist_title')} onBack={onBack} />
