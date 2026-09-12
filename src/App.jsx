@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronsDown, ChevronsUp, Percent, Languages, Calculator } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Search, Percent, Languages, Calculator } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -843,7 +843,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
-  const [showPlayersList, setShowPlayersList] = useState(false);
+  const [showAllSaved, setShowAllSaved] = useState(false);
   const nameRowRef = useRef(null);
 
   useEffect(() => {
@@ -873,6 +873,21 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     && isWithinLast24Hours(lastGame.date ?? lastGame.created_at);
   const savedPlayerGroups = groupSavedPlayersByAlpha(available);
 
+  const recentPlayers = [];
+  {
+    const seen = new Set();
+    outer: for (const g of data.games) {
+      for (const p of (g.players || [])) {
+        if (selected.includes(p) || seen.has(p) || !data.players[p]) continue;
+        seen.add(p);
+        recentPlayers.push(p);
+        if (recentPlayers.length >= 7) break outer;
+      }
+    }
+    recentPlayers.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }
+  const remainingSavedCount = available.filter(p => !recentPlayers.includes(p)).length;
+
   const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
   if (qq) {
@@ -898,7 +913,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       setAlertMessage(tx('setup_dup'));
       return;
     }
-    setSelected([...selected, fn]); setName('');
+    setSelected([fn, ...selected]); setName('');
     setSuppressSavedSuggestions(true);
     if (!match) onSavePlayer(fn);
   };
@@ -908,7 +923,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       setAlertMessage(tx('setup_dup'));
       return;
     }
-    setSelected([...selected, p]); setName('');
+    setSelected([p, ...selected]); setName('');
     setSuppressSavedSuggestions(true);
   };
 
@@ -952,16 +967,9 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
       )}
 
       <Card style={{ padding: '10px 12px', marginBottom: 10 }}>
-        <div style={{
-          fontFamily: F.display,
-          fontSize: 14,
-          color: C.navy,
-          letterSpacing: '2.5px',
-          marginBottom: 4,
-          textAlign: 'center',
-        }}>{tx('setup_add_new')}</div>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
+            <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             <input
               value={name}
               onChange={(e) => { setName(e.target.value); setSuppressSavedSuggestions(false); }}
@@ -978,7 +986,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
                 background: C.creamLight,
                 border: '3px solid #000080',
                 borderRadius: 10,
-                padding: '0 12px',
+                padding: '0 12px 0 34px',
                 fontFamily: F.body,
                 fontSize: 16,
                 lineHeight: '22px',
@@ -1066,48 +1074,38 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             <Plus size={22} strokeWidth={3} />
           </button>
         </div>
-        <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: 8, padding: '8px 16px' }}>
-          {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
-        </Btn>
       </Card>
 
-      {selected.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowPlayersList(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            width: '100%', marginBottom: 10,
-            background: C.creamLight, border: `2px solid ${C.navy}30`, borderRadius: 10,
-            padding: '10px 14px', cursor: 'pointer',
-            fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', color: C.navy,
-          }}
-        >
-          {tx(showPlayersList ? 'setup_hide_players' : 'setup_show_players')} ({selected.length})
-          {showPlayersList ? <ChevronsUp size={16} strokeWidth={2.5} /> : <ChevronsDown size={16} strokeWidth={2.5} />}
-        </button>
-      )}
-
-      {selected.length > 0 && showPlayersList && (
-      <Card style={{ padding: 14, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_players')} ({selected.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {selected.map((p, i) => (
-              <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
-                border: `2px solid ${C.yellow}60`
+      {(recentPlayers.length > 0 || remainingSavedCount > 0) && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: F.display, fontSize: 11, color: C.cream, letterSpacing: '2px', textShadow: `1px 1px 0 ${C.navy}`, marginBottom: 8 }}>{tx('setup_recent')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {recentPlayers.map(p => (
+              <button key={p} type="button" onClick={() => add(p)} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: C.cream, border: `2px solid ${C.navy}`, borderRadius: 999,
+                padding: '8px 12px 8px 10px', boxShadow: '1px 1px 0 #00000012',
+                fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
               }}>
-                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
-              </div>
+                <Plus size={12} strokeWidth={3} />
+                {p}
+              </button>
             ))}
+            {remainingSavedCount > 0 && (
+              <button type="button" onClick={() => setShowAllSaved(v => !v)} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
+                padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
+              }}>
+                {showAllSaved ? tx('setup_show_less') : tx('setup_view_more', { count: remainingSavedCount })}
+                <ChevronRight size={14} strokeWidth={3} />
+              </button>
+            )}
           </div>
-      </Card>
+        </div>
       )}
 
-      {available.length > 0 && (
+      {showAllSaved && available.length > 0 && (
         <Card style={{ padding: '8px 8px 6px', marginBottom: 12 }}>
           <div style={{
             fontFamily: F.display,
@@ -1209,6 +1207,29 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
           ))}
         </Card>
       )}
+
+      {selected.length > 0 && (
+      <Card style={{ padding: 14, marginBottom: 12 }}>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_in_game')} ({selected.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {selected.map((p, i) => (
+              <div key={p} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
+                border: `2px solid ${C.yellow}60`
+              }}>
+                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
+              </div>
+            ))}
+          </div>
+      </Card>
+      )}
+
+      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 8 }}>
+        {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
+      </Btn>
 
       {confirmDeleteSaved && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
