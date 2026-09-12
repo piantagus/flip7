@@ -398,13 +398,13 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 
 // ═══════ DESIGN ATOMS ═══════
 
-function PageBg({ children, showEric = false }) {
+function PageBg({ children, showEric = false, onScroll }) {
   return (
     <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
       <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
-      <div style={{
+      <div onScroll={onScroll} style={{
         position: 'relative',
         flex: 1,
         minHeight: 0,
@@ -1499,6 +1499,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const inputRefs = useRef([]);
 
   const roundNum = game.rounds.length + 1;
@@ -1663,13 +1664,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{ paddingTop: 24 }}>
       <div style={{
         position: 'sticky', top: -10, zIndex: 20,
         margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: '0 0 22px 22px',
-        boxShadow: `0 4px 10px ${C.navyDark}40`,
+        background: C.teal, borderRadius: scrolled ? '0 0 22px 22px' : 0,
+        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flex: 1, minWidth: 0 }}>
@@ -2492,6 +2493,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   const [selectedNames, setSelectedNames] = useState([]);
   const [suppressSuggestions, setSuppressSuggestions] = useState(false);
   const queryRowRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
   const players = Object.values(data.players);
 
   useEffect(() => {
@@ -2546,12 +2548,12 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   const removeName = (nm) => setSelectedNames(prev => prev.filter(x => x !== nm));
 
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{
         position: 'sticky', top: -10, zIndex: 60,
         margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: 22,
-        boxShadow: `0 4px 10px ${C.navyDark}40`,
+        background: C.teal, borderRadius: scrolled ? 22 : 0,
+        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
       <div ref={queryRowRef} style={{ position: 'relative', marginBottom: selectedNames.length > 0 ? 8 : 12, zIndex: showSuggestions ? 70 : 1 }}>
@@ -2680,13 +2682,14 @@ function RankingsScreen({ data, onBack, tx, lang }) {
 function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   const games = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
       <div style={{
         position: 'sticky', top: -10, zIndex: 10,
         margin: '-10px -18px 0', padding: '10px 18px 6px',
-        background: C.teal, borderRadius: 22,
-        boxShadow: `0 4px 10px ${C.navyDark}40`,
+        background: C.teal, borderRadius: scrolled ? 22 : 0,
+        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
         <HeaderBar title={tx('hist_title')} onBack={onBack} />
       </div>
