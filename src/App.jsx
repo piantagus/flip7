@@ -939,6 +939,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const showSavedSuggestions = qq.length > 0 && savedMatchSuggestions.length > 0 && !suppressSavedSuggestions;
 
   const selectedHasCi = (nm) => selected.some(s => foldForMatch(s) === foldForMatch(nm));
+  const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
 
   const addNew = () => {
     const t = name.trim(); if (!t) return;
@@ -948,7 +949,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       setAlertMessage(tx('setup_dup'));
       return;
     }
-    setSelected([fn, ...selected]); setName('');
+    setSelected([fn, ...selected].sort(byName)); setName('');
     setSuppressSavedSuggestions(true);
     if (!match) onSavePlayer(fn);
   };
@@ -958,7 +959,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       setAlertMessage(tx('setup_dup'));
       return;
     }
-    setSelected([p, ...selected]); setName('');
+    setSelected([p, ...selected].sort(byName)); setName('');
     setSuppressSavedSuggestions(true);
   };
 
@@ -990,7 +991,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     <PageBg showEric={false}>
       <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
-      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 10 }}>
+      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px' }}>
         {selected.length < 2 ? (
           selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
         ) : (
@@ -1024,8 +1025,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       )}
 
       {selected.length > 0 && showSelectedList && (
-      <Card style={{ padding: 10, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 10, color: C.navy, letterSpacing: '1.5px', marginBottom: 6 }}>{tx('setup_in_game')} ({selected.length})</div>
+      <Card style={{ padding: 8, marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {selected.map((p, i) => (
               <div key={p} style={{
@@ -1051,13 +1051,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
             {lastGame.players.map(formatDisplayName).join(' · ')}
           </div>
-          <Btn onClick={() => setSelected([...lastGame.players])} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
+          <Btn onClick={() => setSelected([...lastGame.players].sort(byName))} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
             {tx('setup_use')}
           </Btn>
         </Card>
       )}
 
-      <Card style={{ padding: '10px 12px', marginBottom: 10 }}>
+      <Card style={{ padding: '10px 12px', marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
             <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
