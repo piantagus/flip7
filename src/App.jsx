@@ -1249,19 +1249,29 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       </div>
 
       {showLastGameReplay && (
-        <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
-            {tx('setup_last_q_before')}
-            <span style={{ color: C.navyDark, fontWeight: 700 }}>{tx('setup_last_q_em')}</span>
-            {tx('setup_last_q_after')}
+        <button
+          type="button"
+          onClick={() => setSelected([...lastGame.players].sort(byName))}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+            width: '100%', textAlign: 'left', cursor: 'pointer',
+            background: C.creamLight, border: `2px dashed ${C.yellow}`, borderRadius: 12,
+            padding: '8px 12px', marginBottom: 12, boxShadow: '1px 1px 0 #00000010',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: F.display, fontSize: 9, letterSpacing: '1.5px', color: C.yellowDeep, marginBottom: 3 }}>
+              {tx('setup_last_title')}
+            </div>
+            <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {lastGame.players.map(formatDisplayName).join(' · ')}
+            </div>
           </div>
-          <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
-            {lastGame.players.map(formatDisplayName).join(' · ')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, color: C.navy, fontFamily: F.display, fontSize: 12 }}>
+            <RotateCcw size={14} strokeWidth={2.5} />
+            {tx('setup_last_repeat')}
           </div>
-          <Btn onClick={() => setSelected([...lastGame.players].sort(byName))} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
-            {tx('setup_use')}
-          </Btn>
-        </Card>
+        </button>
       )}
 
       {existing.length > 0 && (
