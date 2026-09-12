@@ -844,6 +844,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
   const [showAllSaved, setShowAllSaved] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
 
   useEffect(() => {
@@ -946,9 +947,14 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
     setConfirmDeleteSaved({ name: p, gameCount });
   };
 
+  const handleBack = () => {
+    if (selected.length > 0) { setConfirmLeave(true); return; }
+    onBack();
+  };
+
   return (
     <PageBg showEric={false}>
-      <HeaderBar title={tx('setup_title')} onBack={onBack} />
+      <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
       {showLastGameReplay && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
@@ -1076,7 +1082,26 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         </div>
       </Card>
 
-      {(recentPlayers.length > 0 || remainingSavedCount > 0) && (
+      {selected.length > 0 && (
+      <Card style={{ padding: 14, marginBottom: 12 }}>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_in_game')} ({selected.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {selected.map((p, i) => (
+              <div key={p} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
+                border: `2px solid ${C.yellow}60`
+              }}>
+                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
+              </div>
+            ))}
+          </div>
+      </Card>
+      )}
+
+      {!showAllSaved && (recentPlayers.length > 0 || remainingSavedCount > 0) && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: F.display, fontSize: 11, color: C.cream, letterSpacing: '2px', textShadow: `1px 1px 0 ${C.navy}`, marginBottom: 8 }}>{tx('setup_recent')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -1092,16 +1117,29 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
               </button>
             ))}
             {remainingSavedCount > 0 && (
-              <button type="button" onClick={() => setShowAllSaved(v => !v)} style={{
+              <button type="button" onClick={() => setShowAllSaved(true)} style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
                 padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
               }}>
-                {showAllSaved ? tx('setup_show_less') : tx('setup_view_more', { count: remainingSavedCount })}
+                {tx('setup_view_more', { count: remainingSavedCount })}
                 <ChevronRight size={14} strokeWidth={3} />
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {showAllSaved && available.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <button type="button" onClick={() => setShowAllSaved(false)} style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
+            padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
+          }}>
+            {tx('setup_show_less')}
+            <ChevronRight size={14} strokeWidth={3} style={{ transform: 'rotate(90deg)' }} />
+          </button>
         </div>
       )}
 
@@ -1208,25 +1246,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
         </Card>
       )}
 
-      {selected.length > 0 && (
-      <Card style={{ padding: 14, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_in_game')} ({selected.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {selected.map((p, i) => (
-              <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
-                border: `2px solid ${C.yellow}60`
-              }}>
-                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
-              </div>
-            ))}
-          </div>
-      </Card>
-      )}
-
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 8 }}>
         {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
       </Btn>
@@ -1268,6 +1287,22 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             {alertMessage}
           </div>
           <Btn onClick={() => setAlertMessage(null)}>{tx('setup_ok')}</Btn>
+        </Card></Overlay>
+      )}
+
+      {confirmLeave && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <AlertTriangle color={C.yellowDark} size={22} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('setup_leave_title')}</div>
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
+            {tx('setup_leave_body')}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={() => setConfirmLeave(false)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { setConfirmLeave(false); onBack(); }} variant="danger">{tx('setup_leave_confirm')}</Btn>
+          </div>
         </Card></Overlay>
       )}
     </PageBg>
