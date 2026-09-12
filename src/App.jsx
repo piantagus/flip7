@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Search, Percent, Languages, Calculator } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -821,9 +821,9 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, s
       </Card>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
-        <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
         <Btn onClick={onNewGame} icon={CardsIcon} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_new_game')}</Btn>
         <Btn onClick={onRankings} variant="secondary" icon={Trophy} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rankings')}</Btn>
+        <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
         <Btn onClick={onHistory} variant="secondary" icon={History} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_history')}</Btn>
         <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_language')}</Btn>
       </div>
@@ -861,8 +861,8 @@ function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
       </div>
       <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
         {info.gameCount > 0
-          ? tx('setup_delete_cascade', { name: info.name, count: info.gameCount })
-          : tx('setup_delete_confirm', { name: info.name })}
+          ? tx('setup_delete_cascade', { name: formatDisplayName(info.name), count: info.gameCount })
+          : tx('setup_delete_confirm', { name: formatDisplayName(info.name) })}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Btn onClick={onCancel} variant="secondary">{tx('setup_cancel')}</Btn>
@@ -880,6 +880,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
   const [showAllSaved, setShowAllSaved] = useState(false);
+  const [showSelectedList, setShowSelectedList] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
 
@@ -900,22 +901,19 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   }, []);
 
   const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-  const available = existing
-    .filter(p => !selected.includes(p))
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const lastGame = data.games.length > 0 ? data.games[0] : null;
   const showLastGameReplay = lastGame
     && lastGame.players?.length >= 2
     && selected.length === 0
     && isWithinLast24Hours(lastGame.date ?? lastGame.created_at);
-  const savedPlayerGroups = groupSavedPlayersByAlpha(available);
+  const savedPlayerGroups = groupSavedPlayersByAlpha(existing);
 
   const recentPlayers = [];
   {
     const seen = new Set();
     outer: for (const g of data.games) {
       for (const p of (g.players || [])) {
-        if (selected.includes(p) || seen.has(p) || !data.players[p]) continue;
+        if (seen.has(p) || !data.players[p]) continue;
         seen.add(p);
         recentPlayers.push(p);
         if (recentPlayers.length >= 7) break outer;
@@ -923,7 +921,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     }
     recentPlayers.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }
-  const remainingSavedCount = available.filter(p => !recentPlayers.includes(p)).length;
+  const remainingSavedCount = existing.filter(p => !recentPlayers.includes(p)).length;
 
   const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
@@ -970,6 +968,11 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
 
   const remove = (p) => setSelected(selected.filter(x => x !== p));
 
+  const toggle = (p) => {
+    if (selected.includes(p)) remove(p);
+    else add(p);
+  };
+
   const handleTryStart = () => {
     if (name.trim() !== '') {
       setAlertMessage(tx('setup_pending'));
@@ -987,6 +990,58 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     <PageBg showEric={false}>
       <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
+      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 10 }}>
+        {selected.length < 2 ? (
+          selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
+        ) : (
+          <>
+            {tx('setup_start')}
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: 24, height: 24, borderRadius: 999, background: C.navy, color: C.yellow,
+              fontFamily: F.display, fontSize: 12, marginLeft: 8, padding: '0 6px',
+            }}>{selected.length}</span>
+          </>
+        )}
+      </Btn>
+
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowSelectedList(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+            background: C.navy, border: `3px solid ${C.cream}`, borderRadius: 12,
+            padding: '10px 14px', marginBottom: 10, cursor: 'pointer',
+          }}
+        >
+          <div style={{ width: 26, height: 26, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{selected.length}</div>
+          <div style={{ flex: 1, minWidth: 0, color: C.cream, fontFamily: F.body, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+            {selected.map(formatDisplayName).join(' · ')}
+          </div>
+          {showSelectedList ? <ChevronUp size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} /> : <ChevronDown size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} />}
+        </button>
+      )}
+
+      {selected.length > 0 && showSelectedList && (
+      <Card style={{ padding: 14, marginBottom: 12 }}>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_in_game')} ({selected.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {selected.map((p, i) => (
+              <div key={p} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
+                border: `2px solid ${C.yellow}60`
+              }}>
+                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{formatDisplayName(p)}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
+              </div>
+            ))}
+          </div>
+      </Card>
+      )}
+
       {showLastGameReplay && (
         <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
@@ -995,7 +1050,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             {tx('setup_last_q_after')}
           </div>
           <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
-            {lastGame.players.join(' · ')}
+            {lastGame.players.map(formatDisplayName).join(' · ')}
           </div>
           <Btn onClick={() => setSelected([...lastGame.players])} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
             {tx('setup_use')}
@@ -1081,7 +1136,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
                     }}
                   >
                     <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
                   </button>
                 ))}
               </div>
@@ -1113,40 +1168,24 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         </div>
       </Card>
 
-      {selected.length > 0 && (
-      <Card style={{ padding: 14, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_in_game')} ({selected.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {selected.map((p, i) => (
-              <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
-                border: `2px solid ${C.yellow}60`
-              }}>
-                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
-              </div>
-            ))}
-          </div>
-      </Card>
-      )}
-
       {!showAllSaved && (recentPlayers.length > 0 || remainingSavedCount > 0) && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: F.display, fontSize: 11, color: C.cream, letterSpacing: '2px', textShadow: `1px 1px 0 ${C.navy}`, marginBottom: 8 }}>{tx('setup_recent')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {recentPlayers.map(p => (
-              <button key={p} type="button" onClick={() => add(p)} style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: C.cream, border: `2px solid ${C.navy}`, borderRadius: 999,
-                padding: '8px 12px 8px 10px', boxShadow: '1px 1px 0 #00000012',
-                fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
-              }}>
-                <Plus size={12} strokeWidth={3} />
-                {formatDisplayName(p)}
-              </button>
-            ))}
+            {recentPlayers.map(p => {
+              const isSel = selected.includes(p);
+              return (
+                <button key={p} type="button" onClick={() => toggle(p)} style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: isSel ? C.yellow : C.cream, border: `2px solid ${C.navy}`, borderRadius: 999,
+                  padding: '8px 12px 8px 10px', boxShadow: '1px 1px 0 #00000012',
+                  fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
+                }}>
+                  {isSel ? <Check size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={3} />}
+                  {formatDisplayName(p)}
+                </button>
+              );
+            })}
             {remainingSavedCount > 0 && (
               <button type="button" onClick={() => setShowAllSaved(true)} style={{
                 display: 'flex', alignItems: 'center', gap: 4,
@@ -1161,7 +1200,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         </div>
       )}
 
-      {showAllSaved && available.length > 0 && (
+      {showAllSaved && existing.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button type="button" onClick={() => setShowAllSaved(false)} style={{
             display: 'flex', alignItems: 'center', gap: 4,
@@ -1174,7 +1213,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         </div>
       )}
 
-      {showAllSaved && available.length > 0 && (
+      {showAllSaved && existing.length > 0 && (
         <Card style={{ padding: '8px 8px 6px', marginBottom: 12 }}>
           <div style={{
             fontFamily: F.display,
@@ -1202,47 +1241,46 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
                 gap: 5,
                 width: '100%',
               }}>
-                {bucket.players.map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => add(p)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      textAlign: 'left',
-                      paddingLeft: 7,
-                      paddingRight: 6,
-                      width: '100%',
-                      minWidth: 0,
-                      background: C.cream,
-                      border: `2px solid ${C.navy}`,
-                      borderRadius: 999,
-                      boxShadow: '1px 1px 0 #00000012',
-                      overflow: 'hidden',
-                      color: C.navy,
-                      padding: '3px 6px 3px 7px',
-                      fontFamily: F.body,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      gap: 3,
-                    }}
-                  >
-                    <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{p}</span>
-                  </button>
-                ))}
+                {bucket.players.map(p => {
+                  const isSel = selected.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => toggle(p)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        paddingLeft: 7,
+                        paddingRight: 6,
+                        width: '100%',
+                        minWidth: 0,
+                        background: isSel ? C.yellow : C.cream,
+                        border: `2px solid ${C.navy}`,
+                        borderRadius: 999,
+                        boxShadow: '1px 1px 0 #00000012',
+                        overflow: 'hidden',
+                        color: C.navy,
+                        padding: '3px 6px 3px 7px',
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        gap: 3,
+                      }}
+                    >
+                      {isSel ? <Check size={9} strokeWidth={3} style={{ flexShrink: 0 }} /> : <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{formatDisplayName(p)}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
         </Card>
       )}
-
-      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginBottom: 8 }}>
-        {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
-      </Btn>
 
       {alertMessage && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
@@ -1320,7 +1358,7 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
                       flex: 1, minWidth: 0, color: C.navy, padding: '5px 2px 5px 0',
                       fontFamily: F.body, fontSize: 11, fontWeight: 600,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{p}</span>
+                    }}>{formatDisplayName(p)}</span>
                     <button
                       type="button"
                       onClick={() => handleTryDelete(p)}
@@ -1401,7 +1439,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     const offenders = g.players.filter(p => trailingZeroStreakRounds(g.rounds, p) >= 3);
     if (offenders.length === 0) return;
     if (Math.random() < 0.5) {
-      setSpicyAlert({ players: offenders, message: pickSpicyMessage(offenders) });
+      setSpicyAlert({ players: offenders, message: pickSpicyMessage(offenders.map(formatDisplayName)) });
     }
   };
 
@@ -1639,7 +1677,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                       {isLeader && <Crown size={20} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} style={{ flexShrink: 0 }} />}
                       {!isLeader && rank === 2 && <RankBadge rank={2} />}
                       {!isLeader && rank === 3 && <RankBadge rank={3} />}
-                      <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{p}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 14, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{formatDisplayName(p)}</span>
                       <span style={{ fontFamily: F.display, fontSize: 17, color: C.navy, flexShrink: 0 }}>{total}</span>
                     </div>
                   </div>
@@ -1731,7 +1769,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     {isLeader && <Crown size={12} color={C.yellow} fill={C.yellow} stroke={C.navy} strokeWidth={2} />}
-                    <span style={{ fontFamily: F.display, fontSize: 21, color: C.navy }}>{p}</span> {/* -1 pt */}
+                    <span style={{ fontFamily: F.display, fontSize: 21, color: C.navy }}>{formatDisplayName(p)}</span> {/* -1 pt */}
                   </div>
                   <div style={{ height: 4, background: C.creamDark, borderRadius: 999, marginTop: 3, border: `1px solid ${C.navy}20`, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 999, transition: 'width 0.4s' }} />
@@ -1762,7 +1800,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ fontFamily: F.display, fontSize: 22, color: C.red, marginBottom: 15 }}>{tx('game_flip_title')}</div>
           <div style={{ fontFamily: F.body, fontSize: 16, color: C.navy, lineHeight: 1.5, marginBottom: 20, fontWeight: 'bold' }}>
             {flippeadorAlert.type === 'single'
-              ? <>{lang === 'es' ? '¡' : ''}<span style={{ color: C.red }}>{flippeadorAlert.name}</span> {tx('game_flip_single_rest', { n: flippeadorAlert.remaining })}</>
+              ? <>{lang === 'es' ? '¡' : ''}<span style={{ color: C.red }}>{formatDisplayName(flippeadorAlert.name)}</span> {tx('game_flip_single_rest', { n: flippeadorAlert.remaining })}</>
               : tx('game_flip_multi', { m: FLIP_NEAR_PTS })}
           </div>
           <Btn onClick={() => {
@@ -1780,7 +1818,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <div style={{ fontFamily: F.display, fontSize: 18, color: C.red, letterSpacing: '1px' }}>{tx('game_tie_attn')}</div>
           </div>
           <div style={{ fontFamily: F.body, fontSize: 14, color: C.ink, marginBottom: 18, lineHeight: 1.5 }}>
-            {tx('game_tie_body', { count: tiebreakLeaders.length, names: tiebreakLeaders.join(' · ') })}
+            {tx('game_tie_body', { count: tiebreakLeaders.length, names: tiebreakLeaders.map(formatDisplayName).join(' · ') })}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Btn onClick={() => handleTiebreakChoice('all')} icon={Users} style={{ fontSize: 13, padding: '12px 10px' }}>
@@ -1873,7 +1911,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             {game.rounds.map((r, idx) => (
               <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>{idx + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left' }}>{game.players.map(p => `${p}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
+                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left' }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
                 <Edit3 size={14} />
               </button>
             ))}
@@ -1888,7 +1926,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             {game.players.map(p => (
               <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 14, color: C.navy }}>{p}</div>
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 14, color: C.navy }}>{formatDisplayName(p)}</div>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -2017,7 +2055,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     }}
                   >
                     <Plus size={11} strokeWidth={3} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
                   </button>
                 ))}
               </div>
@@ -2109,7 +2147,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 background: `${C.yellow}30`, border: `2px solid ${C.yellow}`, borderRadius: 10,
                 padding: '10px 14px'
               }}>
-                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
+                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{formatDisplayName(p)}</span>
                 <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} {tx('game_pts_abbr')}</span>
               </div>
             ))}
@@ -2156,7 +2194,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 background: `${C.red}15`, border: `2px solid ${C.red}`, borderRadius: 10,
                 padding: '10px 14px'
               }}>
-                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p}</span>
+                <span style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{formatDisplayName(p)}</span>
                 <span style={{ fontFamily: F.display, fontSize: 20, color: C.red }}>{scores[p]} {tx('game_pts_abbr')}</span>
               </div>
             ))}
@@ -2195,7 +2233,7 @@ function GameOverScreen({ game, onHome, onRematchSame, onRematchEdit, tx }) {
       <Card style={{ padding: 8, marginBottom: 20 }} glow>
         {ranked.map((p, i) => (
           <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: i < ranked.length - 1 ? `2px dashed ${C.navy}15` : 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><RankBadge rank={i + 1} size="lg" /><span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{p}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><RankBadge rank={i + 1} size="lg" /><span style={{ fontFamily: F.display, fontSize: 17, color: C.navy }}>{formatDisplayName(p)}</span></div>
             <span style={{ fontFamily: F.display, fontSize: 24 }}>{game.finalScores[p]}</span>
           </div>
         ))}
@@ -2288,7 +2326,7 @@ function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onC
           {roster.map((p, i) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10, border: `2px solid ${C.yellow}60` }}>
               <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
-              <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
+              <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{formatDisplayName(p)}</div>
               <button type="button" onClick={() => removeFromRoster(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}>
                 <Trash2 size={16} strokeWidth={3} />
               </button>
@@ -2315,7 +2353,7 @@ function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onC
                     onMouseDown={(e) => e.preventDefault()} onClick={() => pickSuggestion(p)}
                     style={{ width: '100%', textAlign: 'left', border: 'none', borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : '1px solid rgba(0, 0, 128, 0.12)', background: suggestionHoverIdx === idx ? 'rgba(244, 212, 77, 0.42)' : 'transparent', padding: '11px 14px', fontFamily: F.body, fontSize: 15, fontWeight: 600, color: '#000080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.12s ease' }}>
                     <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
                   </button>
                 ))}
               </div>
@@ -2353,8 +2391,23 @@ function efficaciaPct(p) {
 
 function RankingsScreen({ data, onBack, tx, lang }) {
   const [tab, setTab] = useState('wins');
-  const [filter, setFilter] = useState('');
+  const [query, setQuery] = useState('');
+  const [selectedNames, setSelectedNames] = useState([]);
+  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+  const queryRowRef = useRef(null);
   const players = Object.values(data.players);
+
+  useEffect(() => {
+    const closeSuggestions = (e) => {
+      if (!queryRowRef.current?.contains(e.target)) setSuppressSuggestions(true);
+    };
+    document.addEventListener('mousedown', closeSuggestions);
+    document.addEventListener('touchstart', closeSuggestions, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', closeSuggestions);
+      document.removeEventListener('touchstart', closeSuggestions);
+    };
+  }, []);
   const tabs = [
     { id: 'wins', label: tx('rk_wins'), icon: Trophy, sort: (a, b) => b.wins - a.wins, value: p => p.wins, suf: '' },
     {
@@ -2375,17 +2428,34 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   ];
   const at = tabs.find(t => t.id === tab);
   const sorted = [...players].sort(at.sort);
-  const fq = foldForMatch(filter.trim());
-  const filtered = fq ? sorted.filter(p => foldForMatch(p.name).includes(fq)) : sorted;
+  const filtered = selectedNames.length > 0 ? sorted.filter(p => selectedNames.includes(p.name)) : sorted;
+
+  const qq = foldForMatch(query.trim());
+  let matchSuggestions = [];
+  if (qq) {
+    matchSuggestions = players
+      .map(p => p.name)
+      .filter(nm => !selectedNames.includes(nm) && foldForMatch(nm).includes(qq))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      .slice(0, 12);
+  }
+  const showSuggestions = qq.length > 0 && matchSuggestions.length > 0 && !suppressSuggestions;
+
+  const pickName = (nm) => {
+    setSelectedNames(prev => [...prev, nm]);
+    setQuery('');
+    setSuppressSuggestions(true);
+  };
+  const removeName = (nm) => setSelectedNames(prev => prev.filter(x => x !== nm));
 
   return (
     <PageBg showEric={false}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
-      <div style={{ position: 'relative', marginBottom: 12 }}>
+      <div ref={queryRowRef} style={{ position: 'relative', marginBottom: selectedNames.length > 0 ? 8 : 12, zIndex: showSuggestions ? 70 : 1 }}>
         <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setSuppressSuggestions(false); }}
           placeholder={tx('rk_filter_ph')}
           autoComplete="off"
           autoCorrect="off"
@@ -2397,7 +2467,61 @@ function RankingsScreen({ data, onBack, tx, lang }) {
             color: C.ink, outline: 'none', boxShadow: `inset 2px 2px 0 ${C.creamDark}`,
           }}
         />
+        {showSuggestions && (
+          <div
+            role="listbox"
+            style={{
+              position: 'absolute', left: 0, right: 0, top: 'calc(100% + 2px)', zIndex: 80,
+              background: C.creamLight, border: '3px solid #000080', borderRadius: 10,
+              boxShadow: '0 4px 14px rgba(0, 0, 128, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
+              maxHeight: 220, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {matchSuggestions.map((nm, idx) => (
+              <button
+                key={nm}
+                type="button"
+                role="option"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pickName(nm)}
+                style={{
+                  width: '100%', textAlign: 'left', border: 'none',
+                  borderBottom: idx === matchSuggestions.length - 1 ? 'none' : '1px solid rgba(0, 0, 128, 0.12)',
+                  background: 'transparent', padding: '11px 14px', fontFamily: F.body, fontSize: 15,
+                  fontWeight: 600, color: '#000080', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}
+              >
+                <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(nm)}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {selectedNames.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          {selectedNames.map(nm => (
+            <button key={nm} type="button" onClick={() => removeName(nm)} style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: C.yellow, border: `2px solid ${C.navy}`, borderRadius: 999,
+              padding: '8px 10px 8px 12px', boxShadow: '1px 1px 0 #00000012',
+              fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
+            }}>
+              {formatDisplayName(nm)}
+              <X size={12} strokeWidth={3} />
+            </button>
+          ))}
+          <button type="button" onClick={() => setSelectedNames([])} style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
+            padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
+          }}>
+            {tx('rk_filter_clear')}
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginBottom: 14, paddingBottom: 4, scrollbarWidth: 'none' }}>
         {tabs.map(t => {
           const active = t.id === tab; const I = t.icon;
@@ -2417,7 +2541,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
               <div>
-                <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{p.name}</div>
+                <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{formatDisplayName(p.name)}</div>
                 {tab !== 'eff' && (
                   <div style={{ fontFamily: F.body, fontSize: 10, lineHeight: 1.25 }}>{formatGamesWinsLine(p, lang)}</div>
                 )}
@@ -2466,7 +2590,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
                 <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1px 0', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <RankBadge rank={i + 1} size="lg" />
-                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+                    <span style={{ fontFamily: F.display, fontSize: 16, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
                   </div>
                   <span style={{ fontFamily: F.display, fontSize: 20, color: C.navy, flexShrink: 0 }}>{g.finalScores[p]}</span>
                 </div>
