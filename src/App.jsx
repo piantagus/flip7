@@ -969,7 +969,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
-  const [showAllSaved, setShowAllSaved] = useState(false);
   const [showSelectedList, setShowSelectedList] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
@@ -1006,21 +1005,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     && selected.length === 0
     && isWithinLast24Hours(lastGame.date ?? lastGame.created_at);
   const savedPlayerGroups = groupSavedPlayersByAlpha(existing);
-
-  const recentPlayers = [];
-  {
-    const seen = new Set();
-    outer: for (const g of data.games) {
-      for (const p of (g.players || [])) {
-        if (seen.has(p) || !data.players[p]) continue;
-        seen.add(p);
-        recentPlayers.push(p);
-        if (recentPlayers.length >= 7) break outer;
-      }
-    }
-    recentPlayers.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-  }
-  const remainingSavedCount = existing.filter(p => !recentPlayers.includes(p)).length;
 
   const qq = foldForMatch(name.trim());
   let savedMatchSuggestions = [];
@@ -1086,6 +1070,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     onBack();
   };
 
+  let cardAnimIdx = 0;
+
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
@@ -1148,22 +1134,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             ))}
           </div>
       </Card>
-      )}
-
-      {showLastGameReplay && (
-        <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
-          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
-            {tx('setup_last_q_before')}
-            <span style={{ color: C.navyDark, fontWeight: 700 }}>{tx('setup_last_q_em')}</span>
-            {tx('setup_last_q_after')}
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
-            {lastGame.players.map(formatDisplayName).join(' · ')}
-          </div>
-          <Btn onClick={() => setSelected([...lastGame.players].sort(byName))} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
-            {tx('setup_use')}
-          </Btn>
-        </Card>
       )}
 
       <div ref={contentRef}>
@@ -1278,52 +1248,23 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       </Card>
       </div>
 
-      {!showAllSaved && (recentPlayers.length > 0 || remainingSavedCount > 0) && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: F.display, fontSize: 11, color: C.cream, letterSpacing: '2px', textShadow: `1px 1px 0 ${C.navy}`, marginBottom: 8 }}>{tx('setup_recent')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {recentPlayers.map(p => {
-              const isSel = selected.includes(p);
-              return (
-                <button key={p} type="button" onClick={() => toggle(p)} style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  background: isSel ? C.yellow : C.cream, border: `2px solid ${C.navy}`, borderRadius: 999,
-                  padding: '8px 12px 8px 10px', boxShadow: '1px 1px 0 #00000012',
-                  fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.navy, cursor: 'pointer',
-                }}>
-                  {isSel ? <Check size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={3} />}
-                  {formatDisplayName(p)}
-                </button>
-              );
-            })}
-            {remainingSavedCount > 0 && (
-              <button type="button" onClick={() => setShowAllSaved(true)} style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
-                padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
-              }}>
-                {tx('setup_view_more', { count: remainingSavedCount })}
-                <ChevronRight size={14} strokeWidth={3} />
-              </button>
-            )}
+      {showLastGameReplay && (
+        <Card style={{ padding: 14, marginBottom: 12, background: C.creamLight, border: `3px dashed ${C.yellow}` }}>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
+            {tx('setup_last_q_before')}
+            <span style={{ color: C.navyDark, fontWeight: 700 }}>{tx('setup_last_q_em')}</span>
+            {tx('setup_last_q_after')}
           </div>
-        </div>
+          <div style={{ fontFamily: F.body, fontSize: 12, color: C.navy, marginBottom: 12, fontWeight: 600 }}>
+            {lastGame.players.map(formatDisplayName).join(' · ')}
+          </div>
+          <Btn onClick={() => setSelected([...lastGame.players].sort(byName))} icon={RotateCcw} style={{ fontSize: 14, padding: '12px 16px' }}>
+            {tx('setup_use')}
+          </Btn>
+        </Card>
       )}
 
-      {showAllSaved && existing.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button type="button" onClick={() => setShowAllSaved(false)} style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            background: 'transparent', border: `2px dashed ${C.cream}`, borderRadius: 999,
-            padding: '8px 12px', fontFamily: F.body, fontSize: 13, fontWeight: 600, color: C.cream, cursor: 'pointer',
-          }}>
-            {tx('setup_show_less')}
-            <ChevronRight size={14} strokeWidth={3} style={{ transform: 'rotate(90deg)' }} />
-          </button>
-        </div>
-      )}
-
-      {showAllSaved && existing.length > 0 && (
+      {existing.length > 0 && (
         <Card style={{ padding: '8px 8px 6px', marginBottom: 12 }}>
           <div style={{
             fontFamily: F.display,
@@ -1353,6 +1294,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
               }}>
                 {bucket.players.map(p => {
                   const isSel = selected.includes(p);
+                  const animDelay = Math.min(cardAnimIdx++, 40) * 15;
                   return (
                     <button
                       key={p}
@@ -1379,6 +1321,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
                         fontWeight: 600,
                         cursor: 'pointer',
                         gap: 3,
+                        animation: 'cardRiseIn 0.32s ease both',
+                        animationDelay: `${animDelay}ms`,
                       }}
                     >
                       {isSel ? <Check size={9} strokeWidth={3} style={{ flexShrink: 0 }} /> : <Plus size={9} strokeWidth={3} style={{ flexShrink: 0 }} />}
@@ -2991,6 +2935,10 @@ export default function App() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
+        @keyframes cardRiseIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html {
           touch-action: manipulation;
