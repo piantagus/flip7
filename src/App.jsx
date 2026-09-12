@@ -1675,10 +1675,15 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div style={{ paddingTop: 24 }}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: -2, zIndex: 20,
-        margin: '-2px -10px 0', padding: '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
+        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 20,
+        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
+        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
+        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flex: 1, minWidth: 0 }}>
@@ -2569,10 +2574,15 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: -2, zIndex: 60,
-        margin: '-2px -10px 0', padding: '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', borderRadius: scrolled ? 20 : 0,
-        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
+        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 60,
+        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
+        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
+        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
       }}>
       <HeaderBar title={tx('rk_title')} onBack={onBack} />
       <div ref={queryRowRef} style={{ position: 'relative', marginBottom: selectedNames.length > 0 ? 8 : 12, zIndex: showSuggestions ? 70 : 1 }}>
@@ -2713,10 +2723,15 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: -2, zIndex: 10,
-        margin: '-2px -10px 0', padding: '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', borderRadius: scrolled ? 20 : 0,
-        boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
+        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
+        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
+        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        borderLeft: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderRight: scrolled ? `4px solid ${C.navy}` : 'none',
+        borderBottom: scrolled ? `4px solid ${C.navy}` : 'none',
+        boxShadow: scrolled ? shadow(C.navyDark, 5, 5) : 'none',
       }}>
         <HeaderBar title={tx('hist_title')} onBack={onBack} />
       </div>
