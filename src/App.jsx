@@ -973,6 +973,15 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const [showSelectedList, setShowSelectedList] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
+  const engageRef = useRef(0);
+  useEffect(() => {
+    if (headerRef.current && contentRef.current) {
+      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
+    }
+  }, []);
 
   useEffect(() => {
     setSuggestionHoverIdx(null);
@@ -1078,9 +1087,19 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   };
 
   return (
-    <PageBg showEric={false}>
-      <HeaderBar title={tx('setup_title')} onBack={handleBack} />
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
+      <div ref={headerRef} style={{
+        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
+        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
+        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
+      }}>
+        <HeaderBar title={tx('setup_title')} onBack={handleBack} />
+      </div>
 
+      <div ref={contentRef}>
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px', gap: 6 }}>
         {selected.length < 2 ? (
           selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
@@ -1095,6 +1114,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           </>
         )}
       </Btn>
+      </div>
 
       {selected.length > 0 && (
         <button
