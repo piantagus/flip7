@@ -1500,6 +1500,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
+  const engageRef = useRef(0);
+  useEffect(() => {
+    if (headerRef.current && contentRef.current) {
+      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
+    }
+  }, []);
   const inputRefs = useRef([]);
 
   const roundNum = game.rounds.length + 1;
@@ -1649,7 +1657,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   const headerStatLabel = { fontFamily: F.display, fontSize: 7, color: C.navy, letterSpacing: '1.5px', lineHeight: 1.1 };
-  const headerStatValue = { fontFamily: F.display, fontSize: 20, color: C.navy, lineHeight: 1 };
+  const headerStatValue = { fontFamily: F.display, fontSize: 17, color: C.navy, lineHeight: 1 };
   const headerStatCard = {
     flex: 1,
     minWidth: 0,
@@ -1664,22 +1672,22 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   return (
-    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div style={{ paddingTop: 24 }}>
-      <div style={{
+      <div ref={headerRef} style={{
         position: 'sticky', top: -2, zIndex: 20,
         margin: '-2px -10px 0', padding: '2px 10px 6px',
         background: scrolled ? C.teal : 'transparent', borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 4px 10px ${C.navyDark}40` : 'none',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, flex: 1, minWidth: 0 }}>
-          <div style={{ ...headerStatCard, flex: 1, padding: '4px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flex: 1, minWidth: 0 }}>
+          <div style={{ ...headerStatCard, flex: 1, padding: '3px 8px' }}>
             <div style={headerStatLabel}>{tx('game_round')}</div>
             <div style={headerStatValue}>{String(roundNum).padStart(2, '0')}</div>
             <div style={{
               fontFamily: F.body,
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: 600,
               color: C.navy,
               lineHeight: 1.2,
@@ -1696,8 +1704,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             style={{
               flexShrink: 0,
               alignSelf: 'stretch',
-              width: 52,
-              minWidth: 52,
+              width: 44,
+              minWidth: 44,
               background: C.yellow,
               border: `3px solid ${C.navy}`,
               borderRadius: 12,
@@ -1709,16 +1717,18 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               padding: 0,
             }}
           >
-            <Calculator size={24} strokeWidth={2.5} color={C.navy} />
+            <Calculator size={20} strokeWidth={2.5} color={C.navy} />
           </button>
         </div>
         <button type="button" onClick={() => setModal('options')} style={{
           alignSelf: 'stretch',
-          background: C.yellow, border: `2.5px solid ${C.navy}`, borderRadius: 8,
-          padding: '8px 12px', cursor: 'pointer', boxShadow: shadowSm(),
-          fontFamily: F.display, fontSize: 9, letterSpacing: '1px', color: C.navy,
-          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-        }}><Settings size={14} strokeWidth={2.5} /> {tx('game_options')}</button>
+          flex: 1,
+          background: C.red, border: `3px solid ${C.navy}`, borderRadius: 10,
+          padding: '8px 10px', cursor: 'pointer', boxShadow: shadow(C.navyDark, 3, 3),
+          fontFamily: F.display, fontSize: 13, letterSpacing: '0.5px', color: C.creamLight,
+          textShadow: `1px 1px 0 ${C.navyDark}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}><Settings size={18} strokeWidth={2.5} /> {tx('game_options')}</button>
       </div>
 
       <div style={{ display: 'flex', gap: 0, marginBottom: -4, position: 'relative', zIndex: 3 }}>
@@ -1745,7 +1755,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </div>
       </div>
 
-      <div style={{
+      <div ref={contentRef} style={{
         background: C.cream, border: `4px solid ${C.navy}`, borderRadius: '0 0 16px 16px',
         boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 2
       }}>
@@ -2494,7 +2504,16 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   const [suppressSuggestions, setSuppressSuggestions] = useState(false);
   const queryRowRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
+  const engageRef = useRef(0);
   const players = Object.values(data.players);
+
+  useEffect(() => {
+    if (headerRef.current && contentRef.current) {
+      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
+    }
+  }, []);
 
   useEffect(() => {
     const closeSuggestions = (e) => {
@@ -2548,8 +2567,8 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   const removeName = (nm) => setSelectedNames(prev => prev.filter(x => x !== nm));
 
   return (
-    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
-      <div style={{
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
+      <div ref={headerRef} style={{
         position: 'sticky', top: -2, zIndex: 60,
         margin: '-2px -10px 0', padding: '2px 10px 6px',
         background: scrolled ? C.teal : 'transparent', borderRadius: scrolled ? 20 : 0,
@@ -2638,7 +2657,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
         })}
       </div>
       </div>
-      <div style={{ marginTop: 14 }}>
+      <div ref={contentRef} style={{ marginTop: 14 }}>
       <Card style={{ padding: 6 }}>
         {filtered.length === 0 && (
           <div style={{ padding: '14px 6px', textAlign: 'center', fontFamily: F.body, fontSize: 13, color: C.inkSoft }}>{tx('rk_filter_empty')}</div>
@@ -2683,9 +2702,17 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   const games = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
+  const engageRef = useRef(0);
+  useEffect(() => {
+    if (headerRef.current && contentRef.current) {
+      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
+    }
+  }, []);
   return (
-    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
-      <div style={{
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
+      <div ref={headerRef} style={{
         position: 'sticky', top: -2, zIndex: 10,
         margin: '-2px -10px 0', padding: '2px 10px 6px',
         background: scrolled ? C.teal : 'transparent', borderRadius: scrolled ? 20 : 0,
@@ -2693,7 +2720,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
       }}>
         <HeaderBar title={tx('hist_title')} onBack={onBack} />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div ref={contentRef} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {games.map(g => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
           return (
