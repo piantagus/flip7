@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, Percent, Languages, Calculator } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronsDown, ChevronsUp, Percent, Languages, Calculator } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -843,6 +843,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
+  const [showPlayersList, setShowPlayersList] = useState(false);
   const nameRowRef = useRef(null);
 
   useEffect(() => {
@@ -948,25 +949,6 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
             {tx('setup_use')}
           </Btn>
         </Card>
-      )}
-
-      {selected.length > 0 && (
-      <Card style={{ padding: 14, marginBottom: 12 }}>
-        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_players')} ({selected.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {selected.map((p, i) => (
-              <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
-                border: `2px solid ${C.yellow}60`
-              }}>
-                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
-              </div>
-            ))}
-          </div>
-      </Card>
       )}
 
       <Card style={{ padding: '10px 12px', marginBottom: 10 }}>
@@ -1088,6 +1070,42 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onDeleteSav
           {selected.length < 2 ? (selected.length === 0 ? tx('setup_need2') : tx('setup_need1')) : tx('setup_start')}
         </Btn>
       </Card>
+
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPlayersList(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', marginBottom: 10,
+            background: C.creamLight, border: `2px solid ${C.navy}30`, borderRadius: 10,
+            padding: '10px 14px', cursor: 'pointer',
+            fontFamily: F.display, fontSize: 12, letterSpacing: '1.5px', color: C.navy,
+          }}
+        >
+          {tx(showPlayersList ? 'setup_hide_players' : 'setup_show_players')} ({selected.length})
+          {showPlayersList ? <ChevronsUp size={16} strokeWidth={2.5} /> : <ChevronsDown size={16} strokeWidth={2.5} />}
+        </button>
+      )}
+
+      {selected.length > 0 && showPlayersList && (
+      <Card style={{ padding: 14, marginBottom: 12 }}>
+        <div style={{ fontFamily: F.display, fontSize: 12, color: C.navy, letterSpacing: '2px', marginBottom: 10 }}>{tx('setup_players')} ({selected.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {selected.map((p, i) => (
+              <div key={p} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: C.navy, padding: '7px 10px 7px 7px', borderRadius: 10,
+                border: `2px solid ${C.yellow}60`
+              }}>
+                <div style={{ width: 24, height: 24, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 11, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{i + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.display, fontSize: 12, color: C.yellow }}>{p}</div>
+                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.yellow, cursor: 'pointer', display: 'flex', padding: 3 }}><X size={16} strokeWidth={3} /></button>
+              </div>
+            ))}
+          </div>
+      </Card>
+      )}
 
       {available.length > 0 && (
         <Card style={{ padding: '8px 8px 6px', marginBottom: 12 }}>
@@ -2055,7 +2073,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
 function GameOverScreen({ game, onHome, onRematchSame, onRematchEdit, tx }) {
   const ranked = [...game.players].sort((a, b) => game.finalScores[b] - game.finalScores[a]);
-  const [showRematchOptions, setShowRematchOptions] = useState(false);
+  const [rematchMenuOpen, setRematchMenuOpen] = useState(false);
   useEffect(() => {
     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
     const t = setTimeout(() => { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }, 250);
@@ -2077,17 +2095,18 @@ function GameOverScreen({ game, onHome, onRematchSame, onRematchEdit, tx }) {
           </div>
         ))}
       </Card>
-      {!showRematchOptions ? (
-        <>
-          <Btn onClick={() => setShowRematchOptions(true)} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_replay')}</Btn>
-          <Btn onClick={onHome} variant="secondary" icon={CardsIcon}>{tx('go_new')}</Btn>
-        </>
-      ) : (
-        <>
-          <Btn onClick={onRematchSame} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_same_players')}</Btn>
-          <Btn onClick={onRematchEdit} variant="secondary" icon={Edit3} style={{ marginBottom: 10 }}>{tx('go_edit_players')}</Btn>
-          <Btn onClick={() => setShowRematchOptions(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
-        </>
+      <Btn onClick={() => setRematchMenuOpen(true)} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_replay')}</Btn>
+      <Btn onClick={onHome} variant="secondary" icon={CardsIcon}>{tx('go_new')}</Btn>
+
+      {rematchMenuOpen && (
+        <Overlay>
+          <Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('go_replay')}</div>
+            <Btn onClick={() => { setRematchMenuOpen(false); onRematchSame(); }} icon={RotateCcw} style={{ marginBottom: 10 }}>{tx('go_same_players')}</Btn>
+            <Btn onClick={() => { setRematchMenuOpen(false); onRematchEdit(); }} variant="secondary" icon={Edit3} style={{ marginBottom: 10 }}>{tx('go_edit_players')}</Btn>
+            <Btn onClick={() => setRematchMenuOpen(false)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+          </Card>
+        </Overlay>
       )}
     </PageBg>
   );
