@@ -1479,15 +1479,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
-  const engageRef = useRef(0);
-  useEffect(() => {
-    if (headerRef.current && contentRef.current) {
-      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
-    }
-  }, []);
   const inputRefs = useRef([]);
 
   const roundNum = game.rounds.length + 1;
@@ -1636,100 +1629,78 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     setTab('anotar');
   };
 
-  const headerStatLabel = { fontFamily: F.display, fontSize: 7, color: C.navy, letterSpacing: '1.5px', lineHeight: 1.1 };
-  const headerStatValue = { fontFamily: F.display, fontSize: 17, color: C.navy, lineHeight: 1 };
-  const headerStatCard = {
-    flex: 1,
-    minWidth: 0,
+  const headerIconBtn = {
+    flexShrink: 0,
+    alignSelf: 'center',
+    width: 48,
+    minWidth: 48,
+    height: 48,
     background: C.yellow,
-    border: `2.5px solid ${C.navy}`,
-    borderRadius: 8,
-    padding: '3px 8px',
-    boxShadow: shadowSm(),
+    border: 'none',
+    borderRadius: 14,
+    boxShadow: `0 3px 8px ${C.navyDark}59`,
+    cursor: 'pointer',
     display: 'flex',
-    flexDirection: 'column',
+    alignItems: 'center',
     justifyContent: 'center',
+    padding: 0,
   };
 
   return (
-    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
+    <PageBg showEric={false}>
       <div style={{ paddingTop: 24 }}>
-      <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 20,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
-        borderRadius: scrolled ? '0 0 20px 20px' : 0,
-        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
-      }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 26, gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flex: 1, minWidth: 0 }}>
-          <div style={{ ...headerStatCard, flex: 1, padding: '3px 8px' }}>
-            <div style={headerStatLabel}>{tx('game_round')}</div>
-            <div style={headerStatValue}>{String(roundNum).padStart(2, '0')}</div>
-            <div style={{
-              fontFamily: F.body,
-              fontSize: 8,
-              fontWeight: 600,
-              color: C.navy,
-              lineHeight: 1.2,
-              marginTop: 2,
-              letterSpacing: '0.3px',
-            }}>
-              {tx('game_goal')}: {target} {tx('game_pts')}
-            </div>
+      <div ref={headerRef}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+        <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+          <div style={{
+            fontFamily: F.display, fontSize: 22, color: C.cream, letterSpacing: '1px', lineHeight: 1,
+            textShadow: `2px 2px 0 ${C.navyDark}, -1px -1px 0 ${C.navy}`,
+            WebkitTextStroke: `1px ${C.navy}`, paintOrder: 'stroke fill',
+          }}>{tx('game_round')} {String(roundNum).padStart(2, '0')}</div>
+          <div style={{
+            fontFamily: F.body, fontSize: 11, fontWeight: 700, color: C.cream,
+            letterSpacing: '0.5px', marginTop: 4, opacity: 0.9,
+          }}>
+            {tx('game_goal')}: {target} {tx('game_pts')}
           </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => setIsCalcOpen(true)}
             aria-label={tx('game_calc_title')}
-            style={{
-              flexShrink: 0,
-              alignSelf: 'stretch',
-              width: 44,
-              minWidth: 44,
-              background: C.yellow,
-              border: `3px solid ${C.navy}`,
-              borderRadius: 12,
-              boxShadow: shadowSm(),
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-            }}
+            style={headerIconBtn}
           >
-            <Calculator size={20} strokeWidth={2.5} color={C.navy} />
+            <Calculator size={24} strokeWidth={2.5} color={C.navy} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setModal('options')}
+            aria-label={tx('game_options')}
+            style={headerIconBtn}
+          >
+            <Settings size={24} strokeWidth={2.5} color={C.navy} />
           </button>
         </div>
-        <button type="button" onClick={() => setModal('options')} style={{
-          alignSelf: 'stretch',
-          flex: 1,
-          background: C.red, border: `3px solid ${C.navy}`, borderRadius: 10,
-          padding: '8px 10px', cursor: 'pointer', boxShadow: shadow(C.navyDark, 3, 3),
-          fontFamily: F.display, fontSize: 13, letterSpacing: '0.5px', color: C.creamLight,
-          textShadow: `1px 1px 0 ${C.navyDark}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}><Settings size={18} strokeWidth={2.5} /> {tx('game_options')}</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 0, marginBottom: -4, position: 'relative', zIndex: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0, marginBottom: -3, position: 'relative', zIndex: 2 }}>
         {[{ id: 'anotar', label: `${tx('game_round')} ${String(roundNum).padStart(2, '0')}` }, { id: 'resultados', label: tx('game_ranking') }].map((tb) => {
           const active = tab === tb.id;
           return (
             <button key={tb.id} onClick={() => { setTab(tb.id); }} style={{
-              flex: 1, padding: '12px 10px',
+              flex: 1, height: active ? 54 : 46, padding: '0 10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: active ? C.cream : C.tealDark,
               color: active ? C.navy : C.creamLight,
-              border: `4px solid ${C.navy}`,
-              borderBottom: active ? `4px solid ${C.cream}` : `4px solid ${C.navy}`,
+              border: `3px solid ${C.navy}`,
+              borderBottom: active ? `3px solid ${C.cream}` : `3px solid ${C.navy}`,
               borderRadius: '14px 14px 0 0',
               fontFamily: F.display, fontSize: 15, letterSpacing: '1.5px',
               fontWeight: active ? 400 : 600,
               textShadow: active ? 'none' : `0 1px 2px ${C.tealShadow}, 0 0 1px ${C.navyDark}`,
               cursor: 'pointer',
-              transform: active ? 'translateY(0)' : 'translateY(4px)',
-              zIndex: active ? 4 : 2,
+              zIndex: active ? 3 : 1,
               boxShadow: active ? 'none' : `inset 0 -3px 0 ${C.tealShadow}`,
             }}>{tb.label}</button>
           );
@@ -1738,8 +1709,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </div>
 
       <div ref={contentRef} style={{
-        background: C.cream, border: `4px solid ${C.navy}`, borderRadius: '0 0 16px 16px',
-        boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 2
+        background: C.cream, borderWidth: '0 3px 3px 3px', borderStyle: 'solid', borderColor: C.navy, borderRadius: '0 0 18px 18px',
+        boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 1
       }}>
 
       {tab === 'anotar' && (<>
