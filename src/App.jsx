@@ -823,8 +823,8 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, s
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
         <Btn onClick={onNewGame} icon={CardsIcon} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_new_game')}</Btn>
         <Btn onClick={onRankings} variant="secondary" icon={Trophy} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rankings')}</Btn>
-        <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
         <Btn onClick={onHistory} variant="secondary" icon={History} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_history')}</Btn>
+        <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
         <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_language')}</Btn>
       </div>
 
@@ -1479,6 +1479,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
+  const [pendingTarget, setPendingTarget] = useState(null);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
   const inputRefs = useRef([]);
@@ -1941,7 +1942,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_opt_h')}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <OptionRow icon={Target} title={tx('game_opt_target')} subtitle={tx('game_opt_target_sub', { n: target })} onClick={() => setModal('target')} />
+            <OptionRow icon={Target} title={tx('game_opt_target')} subtitle={tx('game_opt_target_sub', { n: target })} onClick={() => { setPendingTarget(null); setModal('target'); }} />
             <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
             <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); }} />
             <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => setModal('reset')} />
@@ -1955,13 +1956,19 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 4 }}>{tx('game_new_target')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            {[200, 300, 400, 500].map(v => (
-              <button key={v} onClick={() => { onChangeTarget(v); setModal(null); }} style={{ position: 'relative', background: v === target ? C.navy : C.yellow, color: v === target ? C.yellow : C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
-                <div style={{ fontSize: 30 }}>{v}</div>
-              </button>
-            ))}
+            {[200, 300, 400, 500].map(v => {
+              const selected = pendingTarget !== null ? pendingTarget === v : v === target;
+              return (
+                <button key={v} onClick={() => setPendingTarget(v)} style={{ position: 'relative', background: selected ? C.navy : C.yellow, color: selected ? C.yellow : C.navy, border: `4px solid ${C.navy}`, borderRadius: 14, padding: '14px 0', cursor: 'pointer', fontFamily: F.display }}>
+                  <div style={{ fontSize: 30 }}>{v}</div>
+                </button>
+              );
+            })}
           </div>
-          <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+          {pendingTarget !== null && pendingTarget !== target && (
+            <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10 }}>{tx('game_confirm_target', { n: pendingTarget })}</Btn>
+          )}
+          <Btn onClick={() => { setModal(null); setPendingTarget(null); }} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
@@ -1969,7 +1976,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_which_round')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
-            {game.rounds.map((r, idx) => (
+            {game.rounds.map((r, idx) => ({ r, idx })).reverse().map(({ r, idx }) => (
               <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>{idx + 1}</div>
                 <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left' }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
