@@ -844,12 +844,42 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, s
 
 function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
   const [countdown, setCountdown] = useState(() => (info.gameCount > 0 ? 2 : 0));
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     if (countdown === 0) return;
     const t = setTimeout(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
     return () => clearTimeout(t);
   }, [countdown]);
+
+  if (step === 2) {
+    const displayName = formatDisplayName(info.name);
+    const [bodyBefore, bodyAfter] = tx('setup_delete_final_body').split('{name}');
+    const [btnBefore, btnAfter] = tx('setup_delete_final_btn').split('{name}');
+    return (
+      <Overlay><Card style={{ padding: 16, maxWidth: 280, width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <AlertTriangle color={C.red} size={18} />
+          <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy }}>{tx('setup_delete_final_title')}</div>
+        </div>
+        <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.45 }}>
+          {bodyBefore}<span style={{ fontWeight: 700, color: C.navy }}>{displayName}</span>{bodyAfter}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Btn onClick={onConfirm} variant="danger" style={{ fontSize: 13, padding: '10px 14px', flexDirection: 'column', gap: 2, lineHeight: 1.3 }}>
+            <span>{btnBefore.trim()}</span>
+            <span style={{ fontWeight: 700 }}>{displayName}{btnAfter}</span>
+          </Btn>
+          <Btn onClick={onCancel} variant="secondary" style={{ fontSize: 13, padding: '10px 14px' }}>{tx('setup_cancel')}</Btn>
+        </div>
+      </Card></Overlay>
+    );
+  }
+
+  const displayName = formatDisplayName(info.name);
+  const bodyKey = info.gameCount > 0 ? 'setup_delete_cascade' : 'setup_delete_confirm';
+  const [bodyBefore, bodyAfterRaw] = tx(bodyKey).split('{name}');
+  const bodyAfter = bodyAfterRaw.split('{count}').join(String(info.gameCount));
 
   return (
     <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
@@ -860,13 +890,11 @@ function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
         </div>
       </div>
       <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
-        {info.gameCount > 0
-          ? tx('setup_delete_cascade', { name: formatDisplayName(info.name), count: info.gameCount })
-          : tx('setup_delete_confirm', { name: formatDisplayName(info.name) })}
+        {bodyBefore}<span style={{ fontWeight: 700, color: C.navy }}>{displayName}</span>{bodyAfter}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Btn onClick={onCancel} variant="secondary">{tx('setup_cancel')}</Btn>
-        <Btn onClick={onConfirm} variant="danger" disabled={countdown > 0}>
+        <Btn onClick={() => setStep(2)} variant="danger" disabled={countdown > 0}>
           {countdown > 0 ? `${tx('setup_delete')} (${countdown})` : tx('setup_delete')}
         </Btn>
       </div>
@@ -1474,6 +1502,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerPoints, setNewPlayerPoints] = useState('0');
   const [newPlayerCustomPts, setNewPlayerCustomPts] = useState('');
+  const [suppressAddPlayerSuggestions, setSuppressAddPlayerSuggestions] = useState(false);
+  const [addPlayerSuggestionHoverIdx, setAddPlayerSuggestionHoverIdx] = useState(null);
+  const addPlayerNameRowRef = useRef(null);
   const [scoreWarningConfirmed, setScoreWarningConfirmed] = useState(false);
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
   const [spicyAlert, setSpicyAlert] = useState(null);
@@ -1483,6 +1514,18 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const headerRef = useRef(null);
   const contentRef = useRef(null);
   const inputRefs = useRef([]);
+
+  useEffect(() => {
+    const closeAddPlayerSuggestions = (e) => {
+      if (!addPlayerNameRowRef.current?.contains(e.target)) setSuppressAddPlayerSuggestions(true);
+    };
+    document.addEventListener('mousedown', closeAddPlayerSuggestions);
+    document.addEventListener('touchstart', closeAddPlayerSuggestions, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', closeAddPlayerSuggestions);
+      document.removeEventListener('touchstart', closeAddPlayerSuggestions);
+    };
+  }, []);
 
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
@@ -1944,7 +1987,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <OptionRow icon={Target} title={tx('game_opt_target')} subtitle={tx('game_opt_target_sub', { n: target })} onClick={() => { setPendingTarget(null); setModal('target'); }} />
             <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
-            <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); }} />
+            <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); setSuppressAddPlayerSuggestions(false); setAddPlayerSuggestionHoverIdx(null); }} />
             <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => setModal('reset')} />
             <OptionRow icon={X} title={tx('game_opt_leave')} subtitle={tx('game_opt_leave_sub')} onClick={() => setModal('confirmAbandon')} danger />
           </div>
@@ -1968,7 +2011,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           {pendingTarget !== null && pendingTarget !== target && (
             <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10 }}>{tx('game_confirm_target', { n: pendingTarget })}</Btn>
           )}
-          <Btn onClick={() => { setModal(null); setPendingTarget(null); }} variant="secondary">{tx('setup_cancel')}</Btn>
+          <Btn onClick={() => { setModal('options'); setPendingTarget(null); }} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
@@ -1984,7 +2027,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               </button>
             ))}
           </div>
-          <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+          <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
@@ -2017,7 +2060,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => setModal('selectRound')} variant="secondary">{tx('setup_cancel')}</Btn>
             <Btn onClick={() => { const parsed = {}; for (const p of game.players) parsed[p] = parseInt(editScores[p], 10) || 0; onModifyRound(editingRound, parsed); setModal(null); }}>{tx('game_save')}</Btn>
           </div>
         </Card></Overlay>
@@ -2027,7 +2070,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_reset_q')}</div></div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
             <Btn onClick={() => { onResetGame(); setModal(null); setTab('anotar'); }} variant="danger">{tx('game_reset')}</Btn>
           </div>
         </Card></Overlay>
@@ -2040,14 +2083,22 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>{tx('game_abandon_q')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">{tx('game_back')}</Btn>
+            <Btn onClick={() => setModal('options')} variant="secondary">{tx('game_back')}</Btn>
             <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger">{tx('game_abandon')}</Btn>
           </div>
         </Card></Overlay>
       )}
 
       {modal === 'addPlayer' && (() => {
-        const available = (existingPlayers || []).filter(p => !game.players.includes(p));
+        const qq = foldForMatch(newPlayerName.trim());
+        let savedMatchSuggestions = [];
+        if (qq) {
+          savedMatchSuggestions = (existingPlayers || [])
+            .filter(p => !game.players.includes(p) && foldForMatch(p).startsWith(qq));
+          savedMatchSuggestions.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+          savedMatchSuggestions = savedMatchSuggestions.slice(0, 12);
+        }
+        const showAddPlayerSuggestions = qq.length > 0 && savedMatchSuggestions.length > 0 && !suppressAddPlayerSuggestions;
         const resolveStartPts = () => {
           const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
           if (newPlayerPoints === 'min') return minVal;
@@ -2081,54 +2132,53 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         return (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
           <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_add_p')}</div>
-          <input
-            value={newPlayerName}
-            onChange={(e) => setNewPlayerName(e.target.value)}
-            placeholder={tx('setup_ph_name')}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            style={{ ...addPlayerInputStyle, marginBottom: available.length > 0 ? 8 : 10 }}
-          />
-          {available.length > 0 && (
-            <>
-              <div style={{
-                fontFamily: F.display,
-                fontSize: 10,
-                color: C.navy,
-                letterSpacing: '1.5px',
-                marginBottom: 6,
-              }}>{tx('setup_saved')}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {available.map(p => (
+          <div ref={addPlayerNameRowRef} style={{ position: 'relative', marginBottom: 10, zIndex: showAddPlayerSuggestions ? 70 : 1 }}>
+            <input
+              value={newPlayerName}
+              onChange={(e) => { setNewPlayerName(e.target.value); setSuppressAddPlayerSuggestions(false); setAddPlayerSuggestionHoverIdx(null); }}
+              placeholder={tx('setup_ph_name')}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              style={addPlayerInputStyle}
+            />
+            {showAddPlayerSuggestions && (
+              <div
+                role="listbox"
+                aria-label={tx('setup_saved')}
+                onMouseLeave={() => setAddPlayerSuggestionHoverIdx(null)}
+                style={{
+                  position: 'absolute', left: 0, right: 0, top: 'calc(100% + 2px)', zIndex: 80,
+                  background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
+                  boxShadow: '0 4px 14px rgba(0, 0, 128, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                  maxHeight: 220, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {savedMatchSuggestions.map((p, idx) => (
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setNewPlayerName(p)}
+                    role="option"
+                    aria-selected={addPlayerSuggestionHoverIdx === idx}
+                    onMouseEnter={() => setAddPlayerSuggestionHoverIdx(idx)}
+                    onTouchStart={() => setAddPlayerSuggestionHoverIdx(idx)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setNewPlayerName(p); setSuppressAddPlayerSuggestions(true); setAddPlayerSuggestionHoverIdx(null); }}
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      background: C.creamLight,
-                      color: C.navy,
-                      border: `2px solid ${C.navy}`,
-                      borderRadius: 999,
-                      padding: '4px 10px',
-                      fontFamily: F.body,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      boxShadow: '1px 1px 0 #00000012',
-                      maxWidth: '100%',
+                      width: '100%', textAlign: 'left', border: 'none',
+                      borderBottom: idx === savedMatchSuggestions.length - 1 ? 'none' : `1px solid ${C.navy}1f`,
+                      background: addPlayerSuggestionHoverIdx === idx ? 'rgba(244, 212, 77, 0.42)' : 'transparent',
+                      padding: '11px 14px', fontFamily: F.body, fontSize: 15, fontWeight: 600, color: C.navy,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.12s ease',
                     }}
                   >
-                    <Plus size={11} strokeWidth={3} style={{ flexShrink: 0 }} />
+                    <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
                   </button>
                 ))}
               </div>
-            </>
-          )}
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             {(() => {
               const minVal = game.players.length > 0 ? Math.min(...Object.values(game.totals)) : 0;
@@ -2181,7 +2231,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             />
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal(null)} variant="secondary">{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
             <Btn disabled={!newPlayerName.trim() || game.players.includes(newPlayerName.trim())} onClick={() => addResolvedPlayer(newPlayerName)}>{tx('game_add_btn')}</Btn>
           </div>
         </Card></Overlay>
