@@ -1978,9 +1978,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
             {game.rounds.map((r, idx) => ({ r, idx })).reverse().map(({ r, idx }) => (
               <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>{idx + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left' }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
-                <Edit3 size={14} />
+                <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>#{idx + 1}</div>
+                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left', color: C.ink }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
+                <Edit3 size={14} color={C.navy} />
               </button>
             ))}
           </div>
