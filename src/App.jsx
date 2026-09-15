@@ -1095,7 +1095,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     <PageBg showEric={false}>
       <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
-      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '10px 20px', gap: 6 }}>
+      <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '8px 18px', fontSize: 14, gap: 6, minHeight: 44, boxSizing: 'border-box' }}>
         {selected.length < 2 ? (
           selected.length === 0 ? tx('setup_need2') : tx('setup_need1')
         ) : (
@@ -1103,21 +1103,32 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             {tx('setup_start')}
             <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              minWidth: 30, height: 30, borderRadius: 999, background: C.navy, color: C.yellow,
-              fontFamily: F.display, fontSize: 16, padding: '0 8px',
+              minWidth: 20, height: 20, borderRadius: 999, background: C.navy, color: C.yellow,
+              fontFamily: F.display, fontSize: 12, padding: '0 6px',
             }}>{selected.length}</span>
           </>
         )}
       </Btn>
 
-      {selected.length > 0 && (
+      {selected.length === 0 ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          background: `${C.navy}15`, border: `2px dashed ${C.navy}80`, borderRadius: 12,
+          padding: '10px 14px', marginBottom: 10, boxSizing: 'border-box',
+        }}>
+          <div style={{ width: 26, height: 26, borderRadius: 999, background: `${C.navy}25`, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, flexShrink: 0 }}>0</div>
+          <div style={{ flex: 1, minWidth: 0, color: C.navy, fontFamily: F.body, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+            {tx('setup_none_yet')}
+          </div>
+        </div>
+      ) : (
         <button
           type="button"
           onClick={() => setShowSelectedList(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%',
             background: C.navy, border: `3px solid ${C.cream}`, borderRadius: 12,
-            padding: '10px 14px', marginBottom: 10, cursor: 'pointer',
+            padding: '10px 14px', marginBottom: 10, cursor: 'pointer', boxSizing: 'border-box',
           }}
         >
           <div style={{ width: 26, height: 26, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{selected.length}</div>
@@ -2008,26 +2019,46 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               );
             })}
           </div>
-          {pendingTarget !== null && pendingTarget !== target && (
-            <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10 }}>{tx('game_confirm_target', { n: pendingTarget })}</Btn>
-          )}
+          {pendingTarget !== null && pendingTarget !== target && (() => {
+            const [confirmBefore, confirmAfter] = tx('game_confirm_target').split('{n}');
+            return (
+              <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10 }}>
+                {confirmBefore}
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 30, height: 30, borderRadius: 999, background: C.navy, color: C.yellow,
+                  fontFamily: F.display, fontSize: 16, padding: '0 8px',
+                }}>{pendingTarget}</span>
+                {confirmAfter}
+              </Btn>
+            );
+          })()}
           <Btn onClick={() => { setModal('options'); setPendingTarget(null); }} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
 
       {modal === 'selectRound' && (
         <Overlay><Card style={{ padding: 20, maxWidth: 360, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_which_round')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
-            {game.rounds.map((r, idx) => ({ r, idx })).reverse().map(({ r, idx }) => (
-              <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>#{idx + 1}</div>
-                <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left', color: C.ink }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
-                <Edit3 size={14} color={C.navy} />
-              </button>
-            ))}
-          </div>
-          <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
+          {game.rounds.length === 0 ? (
+            <>
+              <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>{tx('game_no_rounds_yet')}</div>
+              <Btn onClick={() => setModal('options')}>{tx('game_accept')}</Btn>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 14 }}>{tx('game_which_round')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
+                {game.rounds.map((r, idx) => ({ r, idx })).reverse().map(({ r, idx }) => (
+                  <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>#{idx + 1}</div>
+                    <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left', color: C.ink }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
+                    <Edit3 size={14} color={C.navy} />
+                  </button>
+                ))}
+              </div>
+              <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
+            </>
+          )}
         </Card></Overlay>
       )}
 
