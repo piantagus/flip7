@@ -487,7 +487,7 @@ function Btn({ children, onClick, disabled, variant = 'primary', style = {}, ico
   );
 }
 
-function HeaderBar({ onBack, title }) {
+function HeaderBar({ onBack, title, right }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
       {onBack && (
@@ -498,10 +498,12 @@ function HeaderBar({ onBack, title }) {
         }}><ArrowLeft size={22} strokeWidth={3} /></button>
       )}
       <div style={{
+        flex: 1, minWidth: 0,
         fontFamily: F.display, fontSize: 20, color: C.cream, letterSpacing: '2px',
         textShadow: `2px 2px 0 ${C.navyDark}, -1px -1px 0 ${C.navy}`,
         WebkitTextStroke: `1px ${C.navy}`, paintOrder: 'stroke fill'
       }}>{title}</div>
+      {right}
     </div>
   );
 }
@@ -2742,9 +2744,15 @@ function RankingsScreen({ data, onBack, tx, lang }) {
 }
 
 function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
-  const games = data.games;
+  const allGames = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterPlayers, setFilterPlayers] = useState([]);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [suppressFilterSuggestions, setSuppressFilterSuggestions] = useState(false);
+  const [filterSuggestionHoverIdx, setFilterSuggestionHoverIdx] = useState(null);
+  const filterRowRef = useRef(null);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
   const engageRef = useRef(0);
@@ -2753,6 +2761,47 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
       engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
     }
   }, []);
+  useEffect(() => {
+    const closeSuggestions = (e) => {
+      if (!filterRowRef.current?.contains(e.target)) setSuppressFilterSuggestions(true);
+    };
+    document.addEventListener('mousedown', closeSuggestions);
+    document.addEventListener('touchstart', closeSuggestions, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', closeSuggestions);
+      document.removeEventListener('touchstart', closeSuggestions);
+    };
+  }, []);
+
+  const existingPlayerNames = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const qq = foldForMatch(filterQuery.trim());
+  let filterSuggestions = [];
+  if (qq) {
+    filterSuggestions = existingPlayerNames.filter(p => !filterPlayers.includes(p) && foldForMatch(p).startsWith(qq)).slice(0, 12);
+  }
+  const showFilterSuggestions = qq.length > 0 && filterSuggestions.length > 0 && !suppressFilterSuggestions;
+
+  const addFilterPlayer = (p) => {
+    if (!filterPlayers.includes(p)) setFilterPlayers([...filterPlayers, p]);
+    setFilterQuery('');
+    setSuppressFilterSuggestions(true);
+    setFilterSuggestionHoverIdx(null);
+  };
+  const removeFilterPlayer = (p) => setFilterPlayers(filterPlayers.filter(x => x !== p));
+
+  const games = filterPlayers.length === 0
+    ? allGames
+    : allGames.filter(g => filterPlayers.every(p => g.players.includes(p)));
+
+  const winStats = filterPlayers.length >= 2 && games.length > 0
+    ? filterPlayers
+        .map(p => {
+          const wins = games.filter(g => g.winner === p).length;
+          return { name: p, wins, pct: Math.round((wins / games.length) * 100) };
+        })
+        .sort((a, b) => b.wins - a.wins)
+    : [];
+
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
@@ -2763,8 +2812,106 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
-        <HeaderBar title={tx('hist_title')} onBack={onBack} />
+        <HeaderBar title={tx('hist_title')} onBack={onBack} right={
+          <button
+            type="button"
+            onClick={() => setFilterOpen(v => !v)}
+            aria-label={tx('hist_filter_ph')}
+            style={{
+              flexShrink: 0, width: 42, height: 42, borderRadius: 12,
+              background: filterOpen || filterPlayers.length > 0 ? C.yellow : C.cream,
+              border: `3px solid ${C.navy}`, boxShadow: shadowSm(),
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.navy,
+            }}
+          ><Search size={18} strokeWidth={3} /></button>
+        } />
+
+        {filterOpen && (
+          <div style={{ marginBottom: 10 }}>
+            <div ref={filterRowRef} style={{ position: 'relative', zIndex: showFilterSuggestions ? 70 : 1 }}>
+              <input
+                value={filterQuery}
+                onChange={(e) => { setFilterQuery(e.target.value); setSuppressFilterSuggestions(false); setFilterSuggestionHoverIdx(null); }}
+                placeholder={tx('hist_filter_ph')}
+                autoComplete="off" autoCorrect="off" spellCheck={false}
+                style={{
+                  width: '100%', boxSizing: 'border-box', height: 44, minHeight: 44,
+                  background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
+                  padding: '0 12px', fontFamily: F.body, fontSize: 15, color: C.ink, outline: 'none',
+                  boxShadow: `inset 2px 2px 0 ${C.creamDark}`,
+                }}
+              />
+              {showFilterSuggestions && (
+                <div role="listbox" onMouseLeave={() => setFilterSuggestionHoverIdx(null)} style={{
+                  position: 'absolute', left: 0, right: 0, top: 'calc(100% + 2px)', zIndex: 80,
+                  background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
+                  boxShadow: '0 4px 14px rgba(0, 0, 128, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                  maxHeight: 220, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                }}>
+                  {filterSuggestions.map((p, idx) => (
+                    <button key={p} type="button" role="option" aria-selected={filterSuggestionHoverIdx === idx}
+                      onMouseEnter={() => setFilterSuggestionHoverIdx(idx)} onTouchStart={() => setFilterSuggestionHoverIdx(idx)}
+                      onMouseDown={(e) => e.preventDefault()} onClick={() => addFilterPlayer(p)}
+                      style={{
+                        width: '100%', textAlign: 'left', border: 'none',
+                        borderBottom: idx === filterSuggestions.length - 1 ? 'none' : `1px solid ${C.navy}1f`,
+                        background: filterSuggestionHoverIdx === idx ? 'rgba(244, 212, 77, 0.42)' : 'transparent',
+                        padding: '11px 14px', fontFamily: F.body, fontSize: 15, fontWeight: 600, color: C.navy,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                    >
+                      <Users size={16} strokeWidth={2.5} color={C.inkSoft} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {filterPlayers.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {filterPlayers.map(p => (
+                  <span key={p} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: C.navy, color: C.cream, border: `2px solid ${C.navyDark}`, borderRadius: 999,
+                    padding: '4px 6px 4px 10px', fontFamily: F.body, fontSize: 12, fontWeight: 700,
+                  }}>
+                    {formatDisplayName(p)}
+                    <button type="button" onClick={() => removeFilterPlayer(p)} style={{ background: 'transparent', border: 'none', color: C.cream, cursor: 'pointer', display: 'flex', padding: 1 }}>
+                      <X size={12} strokeWidth={3} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {winStats.length > 0 && (
+        <Card style={{ padding: '10px 12px', marginBottom: 10 }}>
+          <div style={{ fontFamily: F.display, fontSize: 11, color: C.navy, letterSpacing: '1px', marginBottom: 8 }}>
+            {tx('hist_win_rate_title', { count: games.length })}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {winStats.map(s => (
+              <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 13, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(s.name)}</div>
+                <div style={{ flex: 2, height: 10, background: C.creamDark, borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: `${s.pct}%`, height: '100%', background: C.green }} />
+                </div>
+                <div style={{ width: 44, textAlign: 'right', fontFamily: F.display, fontSize: 13, color: C.navy, flexShrink: 0 }}>{s.pct}%</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {filterPlayers.length > 0 && games.length === 0 && (
+        <Card style={{ padding: 16, marginBottom: 10, textAlign: 'center' }}>
+          <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, lineHeight: 1.5 }}>{tx('hist_filter_empty')}</div>
+        </Card>
+      )}
+
       <div ref={contentRef} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {games.map(g => {
           const r = [...g.players].sort((a, b) => g.finalScores[b] - g.finalScores[a]);
