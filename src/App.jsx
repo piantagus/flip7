@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -131,6 +131,16 @@ async function removePlayerName(name) {
   return true;
 }
 
+async function renamePlayerNameRow(oldName, newName) {
+  if (!oldName || !newName) return false;
+  const { error } = await supabase.from('players').update({ name: newName }).eq('name', oldName);
+  if (error) {
+    console.error('No se pudo renombrar jugador en Supabase:', error);
+    return false;
+  }
+  return true;
+}
+
 async function insertGame(game) {
   try {
     const { data: inserted, error } = await supabase
@@ -240,6 +250,58 @@ async function executeCascadePlayerDelete(playerName) {
       const ok = await updateGame(patched);
       if (!ok) return false;
     }
+  }
+
+  return true;
+}
+
+/** Reemplaza oldName por newName en todos los lugares de la partida donde aparece como clave/valor. */
+function renamePlayerInGame(game, oldName, newName) {
+  if (!game?.players?.includes(oldName)) return game;
+
+  const players = game.players.map(p => (p === oldName ? newName : p));
+
+  const finalScores = { ...game.finalScores };
+  finalScores[newName] = finalScores[oldName];
+  delete finalScores[oldName];
+
+  const rounds = (game.rounds ?? []).map(round => {
+    const scores = { ...(round.scores ?? {}) };
+    scores[newName] = scores[oldName];
+    delete scores[oldName];
+    return { ...round, scores };
+  });
+
+  const winner = game.winner === oldName ? newName : game.winner;
+
+  return { ...game, players, finalScores, rounds, winner };
+}
+
+async function executeCascadePlayerRename(oldName, newName) {
+  const oldTrimmed = oldName?.trim();
+  const newTrimmed = newName?.trim();
+  if (!oldTrimmed || !newTrimmed) return false;
+
+  const renamed = await renamePlayerNameRow(oldTrimmed, newTrimmed);
+  if (!renamed) return false;
+
+  const { data: gamesData, error: fetchError } = await supabase
+    .from('games')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (fetchError) {
+    console.error('No se pudieron cargar partidas para renombrar en cascada:', fetchError);
+    return false;
+  }
+
+  const affected = (gamesData ?? [])
+    .map(normalizeGameRow)
+    .filter(g => g.players.includes(oldTrimmed));
+
+  for (const g of affected) {
+    const patched = renamePlayerInGame(g, oldTrimmed, newTrimmed);
+    const ok = await updateGame(patched);
+    if (!ok) return false;
   }
 
   return true;
@@ -845,7 +907,7 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, s
 }
 
 function DeleteSavedPlayerConfirm({ info, onCancel, onConfirm, tx }) {
-  const [countdown, setCountdown] = useState(() => (info.gameCount > 0 ? 2 : 0));
+  const [countdown, setCountdown] = useState(2);
   const [step, setStep] = useState(1);
 
   useEffect(() => {
@@ -1405,8 +1467,13 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   );
 }
 
-function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
+function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer, tx }) {
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
+  const [actionsFor, setActionsFor] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState(null);
+  const [renameSaving, setRenameSaving] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
@@ -1422,6 +1489,28 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
   const handleTryDelete = (p) => {
     const gameCount = data.games.filter(g => g.players.includes(p)).length;
     setConfirmDeleteSaved({ name: p, gameCount });
+  };
+
+  const openRename = (p) => {
+    setRenameTarget(p);
+    setRenameValue(formatDisplayName(p));
+    setRenameError(null);
+  };
+
+  const handleSaveRename = async () => {
+    if (renameSaving) return;
+    setRenameSaving(true);
+    setRenameError(null);
+    try {
+      const result = await onRenameSavedPlayer(renameTarget, renameValue);
+      if (result?.ok) {
+        setRenameTarget(null);
+      } else {
+        setRenameError(result?.reason || 'error');
+      }
+    } finally {
+      setRenameSaving(false);
+    }
   };
 
   return (
@@ -1471,16 +1560,16 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
                     }}>{formatDisplayName(p)}</span>
                     <button
                       type="button"
-                      onClick={() => handleTryDelete(p)}
-                      aria-label={tx('setup_delete')}
+                      onClick={() => setActionsFor(p)}
+                      aria-label={tx('players_actions_edit')}
                       style={{
                         flexShrink: 0, border: 'none', borderLeft: `1px solid ${C.navy}18`,
-                        background: 'transparent', color: C.red, opacity: 0.55,
+                        background: 'transparent', color: C.navy, opacity: 0.55,
                         padding: '3px 4px', cursor: 'pointer',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
-                      <Trash2 size={9} strokeWidth={2.5} />
+                      <MoreVertical size={12} strokeWidth={2.5} />
                     </button>
                   </span>
                 ))}
@@ -1490,6 +1579,52 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, tx }) {
         </Card>
       )}
       </div>
+
+      {actionsFor && (
+        <Overlay><Card style={{ padding: 18, maxWidth: 320, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <Users size={20} color={C.navy} strokeWidth={2.5} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{formatDisplayName(actionsFor)}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <OptionRow icon={Edit3} title={tx('players_actions_edit')} subtitle={tx('players_actions_edit_sub')} onClick={() => { const p = actionsFor; setActionsFor(null); openRename(p); }} />
+            <OptionRow icon={Trash2} title={tx('players_actions_delete')} onClick={() => { const p = actionsFor; setActionsFor(null); handleTryDelete(p); }} danger />
+          </div>
+          <div style={{ marginTop: 12 }}><Btn onClick={() => setActionsFor(null)} variant="secondary" style={{ fontSize: 14 }}>{tx('setup_cancel')}</Btn></div>
+        </Card></Overlay>
+      )}
+
+      {renameTarget && (
+        <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
+          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>{tx('players_rename_title')}</div>
+          <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.5 }}>
+            {tx('players_rename_body', { name: formatDisplayName(renameTarget) })}
+          </div>
+          <input
+            value={renameValue}
+            onChange={(e) => { setRenameValue(e.target.value); setRenameError(null); }}
+            placeholder={tx('players_rename_ph')}
+            autoComplete="off" autoCorrect="off" spellCheck={false}
+            style={{
+              width: '100%', boxSizing: 'border-box', height: 44, minHeight: 44,
+              background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
+              padding: '0 12px', fontFamily: F.body, fontSize: 16, color: C.ink, outline: 'none',
+              boxShadow: `inset 2px 2px 0 ${C.creamDark}`, marginBottom: renameError ? 8 : 16,
+            }}
+          />
+          {renameError && (
+            <div style={{ fontFamily: F.body, fontSize: 12, color: C.red, marginBottom: 12, lineHeight: 1.4 }}>
+              {tx({ duplicate: 'players_rename_dup', activeGame: 'players_rename_active' }[renameError] || 'players_rename_error', { name: formatDisplayName(renameTarget) })}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={() => { setActionsFor(renameTarget); setRenameTarget(null); setRenameError(null); }} variant="secondary" disabled={renameSaving}>{tx('setup_cancel')}</Btn>
+            <Btn onClick={handleSaveRename} disabled={!renameValue.trim() || renameSaving}>
+              {renameSaving ? tx('players_rename_saving') : tx('players_rename_save')}
+            </Btn>
+          </div>
+        </Card></Overlay>
+      )}
 
       {confirmDeleteSaved && (
         <DeleteSavedPlayerConfirm
@@ -2963,6 +3098,7 @@ export default function App() {
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
   const [editPlayersOpen, setEditPlayersOpen] = useState(false);
   const [deletingPlayer, setDeletingPlayer] = useState(false);
+  const [renamingPlayer, setRenamingPlayer] = useState(false);
   const wakeLockRef = useRef(null);
 
   useEffect(() => {
@@ -3120,6 +3256,34 @@ export default function App() {
     }
   };
 
+  const renameSavedPlayer = async (oldName, newNameRaw) => {
+    if (!oldName || renamingPlayer) return { ok: false, reason: 'error' };
+    const newName = newNameRaw?.trim();
+    if (!newName) return { ok: false, reason: 'empty' };
+    if (foldForMatch(newName) === foldForMatch(oldName)) return { ok: true };
+
+    const existingNames = Object.keys(data.players);
+    const duplicate = existingNames.some(n => n !== oldName && foldForMatch(n) === foldForMatch(newName));
+    if (duplicate) return { ok: false, reason: 'duplicate' };
+
+    if (game && game.players.includes(oldName)) return { ok: false, reason: 'activeGame' };
+
+    setRenamingPlayer(true);
+    try {
+      const ok = await executeCascadePlayerRename(oldName, newName);
+      if (!ok) return { ok: false, reason: 'error' };
+      const refreshed = await loadData();
+      setData(refreshed);
+      setSelected(prev => prev.map(p => (p === oldName ? newName : p)));
+      return { ok: true };
+    } catch (e) {
+      console.error('Error al renombrar jugador en cascada:', e);
+      return { ok: false, reason: 'error' };
+    } finally {
+      setRenamingPlayer(false);
+    }
+  };
+
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
   const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])), tiebreak: undefined }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
   const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
@@ -3175,7 +3339,7 @@ export default function App() {
       {screen === 'setup' && (
         <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} />
       )}
-      {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} tx={tx} />}
+      {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} />}
       {targetPickerOpen && (
         <TargetPickerOverlay
           onCancel={() => setTargetPickerOpen(false)}
