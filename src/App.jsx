@@ -655,6 +655,16 @@ function CardsIcon({ size = 30 }) {
   );
 }
 
+function BustCardsIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3.5" y="5" width="11" height="15" rx="2" transform="rotate(-12 9 12.5)" />
+      <rect x="9.5" y="4" width="11" height="15" rx="2" transform="rotate(12 15 11.5)" />
+      <line x1="4" y1="21" x2="20" y2="3" />
+    </svg>
+  );
+}
+
 function RankBadge({ rank, size = 'sm' }) {
   const bg = rank === 1 ? `linear-gradient(135deg, ${C.yellowBright}, ${C.yellowDark})` : rank === 2 ? `linear-gradient(135deg, #d0d0d0, #a0a0a0)` : rank === 3 ? 'linear-gradient(135deg, #cd9b6a, #a07040)' : C.creamDark;
   const dim = size === 'lg' ? { box: 32, font: 14 } : { box: 24, font: 10 };
@@ -1725,6 +1735,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   const handleCloseRound = async () => {
+    if (missingScoreCount > 0) return;
     const roundPts = (p) => {
       const raw = scores[p];
       if (raw === '' || raw === undefined) return 0;
@@ -1788,6 +1799,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     scoringPlayers,
     (p) => game.totals[p] ?? 0,
   );
+
+  const missingScoreCount = scoringPlayersSorted.filter(p => scores[p] === '' || scores[p] === undefined).length;
 
   const focusScoreInputAt = (idx) => {
     const el = inputRefs.current[idx];
@@ -1890,7 +1903,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           const pct = Math.min(100, (total / target) * 100);
           const { rank, isLeader } = scoringRankMeta[p];
           const barColor = pct <= 33 ? C.red : pct <= 66 ? C.yellow : C.green;
-          const isBustDisabled = (scores[p] === '0' || scores[p] === '');
+          const isZeroEntered = scores[p] === '0';
 
           return (
             <div key={p} style={{
@@ -1931,11 +1944,10 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     autoComplete="off"
                     name={`score-${p}`}
                     value={scores[p] ?? ''}
-                    onFocus={(e) => { if (e.target.value === '0') setScores({ ...scores, [p]: '' }); }}
-                    onBlur={(e) => { if (e.target.value === '') setScores({ ...scores, [p]: '0' }); }}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     onKeyDown={(e) => handleScoreKeyDown(e, idx)}
-                    placeholder="0"
+                    placeholder="-"
                     style={{
                       width: 52,
                       height: 32,
@@ -1955,27 +1967,25 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   />
                   <button
                     type="button"
-                    onClick={() => { if (!isBustDisabled) setScores({ ...scores, [p]: '0' }); }}
+                    onClick={() => setScores({ ...scores, [p]: '0' })}
+                    aria-label="0"
                     style={{
-                      background: isBustDisabled ? `${C.red}40` : C.red,
-                      color: C.white,
-                      border: `2px solid ${C.navyDark}`,
+                      background: isZeroEntered ? C.red : C.cream,
+                      color: isZeroEntered ? C.white : C.navy,
+                      border: `2px solid ${isZeroEntered ? C.navyDark : `${C.navy}55`}`,
                       borderRadius: 7,
+                      width: 40,
                       height: 32,
                       boxSizing: 'border-box',
-                      padding: '0 8px',
-                      cursor: isBustDisabled ? 'default' : 'pointer',
-                      fontFamily: F.display,
-                      fontSize: 8,
-                      letterSpacing: '0.5px',
-                      boxShadow: isBustDisabled ? 'none' : '1px 1px 0 #00000030',
+                      padding: 0,
+                      cursor: 'pointer',
+                      boxShadow: isZeroEntered ? '1px 1px 0 #00000030' : 'none',
                       flexShrink: 0,
-                      opacity: isBustDisabled ? 0.7 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
-                  >BUST</button>
+                  ><BustCardsIcon size={20} /></button>
                 </div>
               </div>
             </div>
@@ -1983,7 +1993,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         })}
       </form>
       <div style={{ marginTop: 12 }}>
-        <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
+        {missingScoreCount > 0 ? (
+          <Btn
+            onClick={handleCloseRound}
+            disabled
+            icon={Zap}
+            style={{ padding: '10px', background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none' }}
+          >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
+        ) : (
+          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
+        )}
       </div>
       </div>
 
@@ -3119,7 +3138,7 @@ export default function App() {
   const startGame = (targetVal) => {
     const newGame = { players: [...selected], rounds: [], totals: Object.fromEntries(selected.map(p => [p, 0])), targetScore: targetVal };
     setGame(newGame);
-    setScores(Object.fromEntries(selected.map(p => [p, '0'])));
+    setScores(Object.fromEntries(selected.map(p => [p, ''])));
     setTargetPickerOpen(false);
     setScreen('game');
   };
@@ -3144,7 +3163,7 @@ export default function App() {
         ...gameAfter,
         tiebreak: { players: leaders, mode: game.tiebreak?.mode ?? null },
       });
-      setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+      setScores(Object.fromEntries(game.players.map(p => [p, ''])));
       return { status: 'tie', leaders, gameAfter };
     }
     if (outcome.type === 'win') {
@@ -3166,7 +3185,7 @@ export default function App() {
       return { status: 'finished' };
     }
     setGame(gameAfter);
-    setScores(Object.fromEntries(game.players.map(p => [p, '0'])));
+    setScores(Object.fromEntries(game.players.map(p => [p, ''])));
     return { status: 'continued', gameAfter };
   };
 
@@ -3231,8 +3250,8 @@ export default function App() {
   };
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
-  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])), tiebreak: undefined }); setScores(Object.fromEntries(game.players.map(p => [p, '0']))); } };
-  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '0' }); } };
+  const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])), tiebreak: undefined }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); } };
+  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '' }); } };
   const modifyRound = (idx, newScores) => {
     if (!game) return;
     const ur = game.rounds.map((r, i) => i === idx ? { ...r, scores: newScores } : r);
