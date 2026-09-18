@@ -1841,7 +1841,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     minWidth: 48,
     height: 48,
     background: C.yellow,
-    border: 'none',
+    border: `2px solid ${C.navy}`,
+    boxSizing: 'border-box',
     borderRadius: 14,
     boxShadow: `0 3px 8px ${C.navyDark}59`,
     cursor: 'pointer',
@@ -1850,22 +1851,21 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     justifyContent: 'center',
     padding: 0,
   };
+  const headerActionBtn = { ...headerIconBtn, boxShadow: shadowSm() };
 
   return (
     <PageBg showEric={false}>
       <div style={{ paddingTop: 24 }}>
       <div ref={headerRef}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-        <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
-          <div style={{
-            fontFamily: F.display, fontSize: 22, color: C.cream, letterSpacing: '1px', lineHeight: 1,
-            textShadow: `2px 2px 0 ${C.navyDark}`,
-            WebkitTextStroke: `1px ${C.navy}`, paintOrder: 'stroke fill',
-          }}>{tx('game_round')} {String(roundNum).padStart(2, '0')}</div>
-          <div style={{
-            fontFamily: F.body, fontSize: 11, fontWeight: 700, color: C.navy,
-            letterSpacing: '0.5px', marginTop: 4, opacity: 0.9,
-          }}>
+        <div style={{
+          ...headerIconBtn, width: 'auto', minWidth: 0, padding: '0 16px', cursor: 'default',
+          flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left',
+        }}>
+          <div style={{ fontFamily: F.display, fontSize: 17, color: C.navy, letterSpacing: '1px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            {tx('game_round')} {String(roundNum).padStart(2, '0')}
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: C.navy, letterSpacing: '0.5px', marginTop: 4, lineHeight: 1, whiteSpace: 'nowrap', opacity: 0.85 }}>
             {tx('game_goal')}: {target} {tx('game_pts')}
           </div>
         </div>
@@ -1874,7 +1874,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             type="button"
             onClick={() => setIsCalcOpen(true)}
             aria-label={tx('game_calc_title')}
-            style={headerIconBtn}
+            className="hdrBtn"
+            style={headerActionBtn}
           >
             <Calculator size={24} strokeWidth={2.5} color={C.navy} />
           </button>
@@ -1882,7 +1883,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             type="button"
             onClick={() => setModal('options')}
             aria-label={tx('game_options')}
-            style={headerIconBtn}
+            className="hdrBtn"
+            style={headerActionBtn}
           >
             <Settings size={24} strokeWidth={2.5} color={C.navy} />
           </button>
@@ -1892,7 +1894,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       </div>
 
       <div ref={contentRef} style={{
-        background: C.cream, border: `3px solid ${C.navy}`, borderRadius: '0 14px 14px 14px',
+        background: C.cream, border: `3px solid ${C.navy}`, borderRadius: 20,
         boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 1
       }}>
 
@@ -2098,7 +2100,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
             <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); setSuppressAddPlayerSuggestions(false); setAddPlayerSuggestionHoverIdx(null); }} />
             <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => { setConfirmCountdown(2); setModal('reset'); }} />
-            <OptionRow icon={X} title={tx('game_opt_leave')} subtitle={tx('game_opt_leave_sub')} onClick={() => { setConfirmCountdown(2); setModal('confirmAbandon'); }} danger />
+            <OptionRow icon={X} title={tx('game_opt_leave')} subtitle={tx('game_opt_leave_sub')} onClick={() => { setConfirmCountdown(1); setModal('confirmAbandon'); }} danger />
           </div>
           <div style={{ marginTop: 12 }}><Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>{tx('game_close')}</Btn></div>
         </Card></Overlay>
@@ -3266,6 +3268,7 @@ export default function App() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
+        .hdrBtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1F2A6B !important; }
         @keyframes cardRiseIn {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
