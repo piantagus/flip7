@@ -655,6 +655,14 @@ function CardsIcon({ size = 30 }) {
   );
 }
 
+/** Selecciona todo el texto de un input. Se difiere un tick porque los navegadores móviles colocan el cursor
+ *  después del foco/toque y pisarían una selección hecha de forma sincrónica. */
+function selectAllSoon(el) {
+  const run = () => { try { el.setSelectionRange(0, el.value.length); } catch (_) { el.select(); } };
+  run();
+  setTimeout(run, 0);
+}
+
 function BustCardsIcon({ size = 20, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1946,7 +1954,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                     autoComplete="off"
                     name={`score-${p}`}
                     value={scores[p] ?? ''}
-                    onFocus={(e) => e.target.select()}
+                    onFocus={(e) => selectAllSoon(e.target)}
+                    onClick={(e) => selectAllSoon(e.target)}
+                    onMouseUp={(e) => e.preventDefault()}
                     onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
                     onKeyDown={(e) => handleScoreKeyDown(e, idx)}
                     placeholder="-"
@@ -2000,7 +2010,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             onClick={handleCloseRound}
             disabled
             icon={Zap}
-            style={{ padding: '10px', background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none' }}
+            style={{ padding: '12px 8px', gap: 6, background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none', fontSize: 'clamp(10px, 3.3vw, 15px)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
           >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
         ) : (
           <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
