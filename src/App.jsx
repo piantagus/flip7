@@ -1682,7 +1682,7 @@ function RulesActionCard({ color, title, children }) {
   );
 }
 
-function RulesScreen({ onBack, tx }) {
+function RulesScreen({ onBack, tx, fromGame = false }) {
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
@@ -1703,7 +1703,23 @@ function RulesScreen({ onBack, tx }) {
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
-        <HeaderBar onBack={onBack} title={tx('rules_title')} />
+        {fromGame ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+            <div style={{
+              flex: 1, minWidth: 0,
+              fontFamily: F.display, fontSize: 20, color: C.cream, letterSpacing: '2px',
+              textShadow: `2px 2px 0 ${C.navyDark}, -1px -1px 0 ${C.navy}`,
+              WebkitTextStroke: `1px ${C.navy}`, paintOrder: 'stroke fill'
+            }}>{tx('rules_title')}</div>
+            <button type="button" onClick={onBack} style={{
+              background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
+              padding: '9px 16px', fontFamily: F.display, fontSize: 12, letterSpacing: '1px',
+              color: C.navy, cursor: 'pointer', boxShadow: shadowSm(), flexShrink: 0, whiteSpace: 'nowrap',
+            }}>{tx('rules_back_to_game')}</button>
+          </div>
+        ) : (
+          <HeaderBar onBack={onBack} title={tx('rules_title')} />
+        )}
       </div>
 
       <div ref={contentRef}>
@@ -1730,7 +1746,7 @@ function RulesScreen({ onBack, tx }) {
   );
 }
 
-function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onSetTiebreakMode, existingPlayers, tx, lang }) {
+function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onSetTiebreakMode, onViewRules, existingPlayers, tx, lang }) {
   const [modal, setModal] = useState(null);
   const [editingRound, setEditingRound] = useState(null);
   const [editScores, setEditScores] = useState({});
@@ -1748,6 +1764,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [pendingTarget, setPendingTarget] = useState(null);
   const [confirmCountdown, setConfirmCountdown] = useState(0);
   const [activeScoreIdx, setActiveScoreIdx] = useState(null);
+  const [keypadMode, setKeypadMode] = useState('digits');
+  const [cardSelection, setCardSelection] = useState({ numbers: [], mods: [] });
   const scoreReplaceNextRef = useRef(false);
 
   useEffect(() => {
@@ -1883,6 +1901,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const activateScoreCell = (idx) => {
     scoreReplaceNextRef.current = true;
+    setKeypadMode('digits');
+    setCardSelection({ numbers: [], mods: [] });
     setActiveScoreIdx(idx);
   };
 
@@ -1905,7 +1925,35 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
     scoreReplaceNextRef.current = false;
   };
 
+  const CARD_FLIP7_BONUS = 25;
+  const cardsNumberSum = cardSelection.numbers.reduce((a, b) => a + b, 0);
+  const cardsHasX2 = cardSelection.mods.includes('x2');
+  const cardsFlatModSum = cardSelection.mods.filter((m) => m !== 'x2').reduce((a, m) => a + parseInt(m, 10), 0);
+  const cardsFlip7 = cardSelection.numbers.length === 7;
+  const cardsTotal = (cardsHasX2 ? cardsNumberSum * 2 : cardsNumberSum) + cardsFlatModSum + (cardsFlip7 ? CARD_FLIP7_BONUS : 0);
+
+  const toggleCardNumber = (n) => {
+    setCardSelection((sel) => {
+      const has = sel.numbers.includes(n);
+      if (!has && sel.numbers.length >= 7) return sel;
+      const numbers = has ? sel.numbers.filter((x) => x !== n) : [...sel.numbers, n];
+      return { ...sel, numbers };
+    });
+  };
+
+  const toggleCardMod = (key) => {
+    setCardSelection((sel) => {
+      const has = sel.mods.includes(key);
+      const mods = has ? sel.mods.filter((x) => x !== key) : [...sel.mods, key];
+      return { ...sel, mods };
+    });
+  };
+
   const pressScoreConfirm = () => {
+    if (keypadMode === 'cards' && activeScoreIdx !== null) {
+      const p = scoringPlayersSorted[activeScoreIdx];
+      setScores({ ...scores, [p]: String(cardsTotal) });
+    }
     closeScoreKeypad();
   };
 
@@ -2174,6 +2222,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
             <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); setSuppressAddPlayerSuggestions(false); setAddPlayerSuggestionHoverIdx(null); }} />
             <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => { setConfirmCountdown(2); setModal('reset'); }} />
+            <OptionRow icon={BookOpen} title={tx('game_opt_rules')} subtitle={tx('game_opt_rules_sub')} onClick={() => { setModal(null); onViewRules(); }} />
             <OptionRow icon={X} title={tx('game_opt_leave')} subtitle={tx('game_opt_leave_sub')} onClick={() => { setConfirmCountdown(1); setModal('confirmAbandon'); }} danger />
           </div>
           <div style={{ marginTop: 12 }}><Btn onClick={() => setModal(null)} variant="secondary" style={{ fontSize: 14 }}>{tx('game_close')}</Btn></div>
@@ -2546,55 +2595,182 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           boxShadow: `inset 0 0 0 3px ${C.yellowDark}, ${shadowSm()}`,
           fontFamily: F.display, fontSize: 24, color, cursor: 'pointer',
         });
+        const tabStyle = (active) => ({
+          flex: 1, height: active ? 38 : 32, padding: '0 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: active ? C.cream : C.tealDark,
+          color: active ? C.navy : C.creamLight,
+          border: `3px solid ${C.navy}`,
+          borderBottom: active ? `3px solid ${C.cream}` : `3px solid ${C.navy}`,
+          borderRadius: '12px 12px 0 0',
+          fontFamily: F.display, fontSize: 13, letterSpacing: '1.5px',
+          textShadow: active ? 'none' : `0 1px 2px ${C.tealShadow}, 0 0 1px ${C.navyDark}`,
+          cursor: 'pointer', zIndex: active ? 3 : 1,
+          boxShadow: active ? 'none' : `inset 0 -3px 0 ${C.tealShadow}`,
+        });
+        const numbersSorted = [...cardSelection.numbers].sort((a, b) => a - b);
+        const flatModsSorted = cardSelection.mods.filter((m) => m !== 'x2').sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const miniKeyStyle = (color, selected) => ({
+          height: 42, background: selected ? C.yellow : C.creamLight,
+          border: `3px solid ${selected ? C.navyDark : C.navy}`, borderRadius: 10,
+          boxShadow: selected ? `inset 1px 1px 0 ${C.yellowDark}` : `inset 0 0 0 2px ${C.yellowDark}, ${shadowSm()}`,
+          fontFamily: F.display, fontSize: 16, color: selected ? C.navy : color, cursor: 'pointer',
+        });
+        const modKeyStyle = (selected) => ({
+          height: 38, background: selected ? C.yellow : C.creamLight,
+          border: `3px solid ${selected ? C.navyDark : C.navy}`, borderRadius: 10,
+          boxShadow: selected ? `inset 1px 1px 0 ${C.yellowDark}` : shadowSm(),
+          fontFamily: F.display, fontSize: 13, color: C.navy, cursor: 'pointer',
+        });
         return (
         <>
           <div onClick={closeScoreKeypad} style={{ position: 'fixed', inset: 0, background: `${C.navyDark}30`, zIndex: 89 }} />
           <div style={{
             position: 'fixed', left: '50%', bottom: 0, transform: 'translateX(-50%)',
-            width: '100%', maxWidth: 460, boxSizing: 'border-box',
-            background: C.cream, borderTop: `3px solid ${C.navy}`, borderRadius: '16px 16px 0 0',
-            boxShadow: `0 -4px 14px ${C.navyDark}40`, padding: '10px 10px calc(10px + env(safe-area-inset-bottom))',
-            zIndex: 90,
+            width: '100%', maxWidth: 460, boxSizing: 'border-box', zIndex: 90,
           }}>
-            <div style={{ marginBottom: 8, padding: '0 2px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0, marginBottom: -3, position: 'relative', zIndex: 2 }}>
+              <button type="button" onClick={() => setKeypadMode('digits')} style={tabStyle(keypadMode === 'digits')}>123</button>
+              <button type="button" onClick={() => setKeypadMode('cards')} style={tabStyle(keypadMode === 'cards')} aria-label="Anotador de cartas">
+                <Calculator size={15} strokeWidth={2.5} color={keypadMode === 'cards' ? C.navy : C.creamLight} />
+              </button>
+            </div>
+
+            <div style={{
+              background: C.cream, borderWidth: '0 3px 3px 3px', borderStyle: 'solid', borderColor: C.navy,
+              boxShadow: `0 -4px 14px ${C.navyDark}40`, padding: '10px 10px calc(10px + env(safe-area-inset-bottom))',
+              position: 'relative', zIndex: 1,
+            }}>
+            <div style={{ marginBottom: 8, padding: '0 2px' }}>
               <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, letterSpacing: '0.5px' }}>{formatDisplayName(activePlayer)}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+
+            {keypadMode === 'cards' && (
+              <div style={{
+                background: C.navy, border: `3px solid ${C.navyDark}`, borderRadius: 10,
+                padding: '10px 12px', marginBottom: 10, height: 40,
+                display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 6,
+                overflow: 'hidden', whiteSpace: 'nowrap',
+              }}>
+                <span style={{
+                  fontFamily: F.body, fontSize: 13, color: C.yellow, opacity: 0.9,
+                  overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+                }}>
+                  ({numbersSorted.length ? numbersSorted.join(' + ') : '0'})
+                  {cardsHasX2 && <strong style={{ fontWeight: 800 }}> x2</strong>}
+                  {flatModsSorted.map((m) => <span key={m}> (+{m})</span>)}
+                  {cardsFlip7 && <span> (+25)</span>}
+                </span>
+                <span style={{ fontFamily: F.display, fontSize: 18, color: C.yellow, flexShrink: 0 }}>= {cardsTotal}</span>
+              </div>
+            )}
+
+            {keypadMode === 'digits' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className="numKey"
+                    onClick={() => pressScoreDigit(String(d))}
+                    style={cardKeyStyle(cardNumColors[d % cardNumColors.length])}
+                  >{d}</button>
+                ))}
                 <button
-                  key={d}
                   type="button"
                   className="numKey"
-                  onClick={() => pressScoreDigit(String(d))}
-                  style={cardKeyStyle(cardNumColors[d % cardNumColors.length])}
-                >{d}</button>
-              ))}
-              <button
-                type="button"
-                className="numKey"
-                onClick={pressScoreBackspace}
-                aria-label="Borrar"
-                style={{
-                  height: 56, background: C.creamLight, border: `3px solid ${C.red}`, borderRadius: 12,
-                  boxShadow: shadowSm(C.redDark), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, cursor: 'pointer',
-                }}
-              ><Delete size={22} strokeWidth={2.5} /></button>
-              <button
-                type="button"
-                className="numKey"
-                onClick={() => pressScoreDigit('0')}
-                style={cardKeyStyle(cardNumColors[0])}
-              >0</button>
-              <button
-                type="button"
-                className="numKey"
-                onClick={pressScoreConfirm}
-                aria-label="Confirmar"
-                style={{
-                  height: 56, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
-                  boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.navy, cursor: 'pointer',
-                }}
-              ><Check size={24} strokeWidth={3} /></button>
+                  onClick={pressScoreBackspace}
+                  aria-label="Borrar"
+                  style={{
+                    height: 56, background: C.creamLight, border: `3px solid ${C.red}`, borderRadius: 12,
+                    boxShadow: shadowSm(C.redDark), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, cursor: 'pointer',
+                  }}
+                ><Delete size={22} strokeWidth={2.5} /></button>
+                <button
+                  type="button"
+                  className="numKey"
+                  onClick={() => pressScoreDigit('0')}
+                  style={cardKeyStyle(cardNumColors[0])}
+                >0</button>
+                <button
+                  type="button"
+                  className="numKey"
+                  onClick={pressScoreConfirm}
+                  aria-label="Confirmar"
+                  style={{
+                    height: 56, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
+                    boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.navy, cursor: 'pointer',
+                  }}
+                ><Check size={24} strokeWidth={3} /></button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 6 }}>
+                  {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="numKey"
+                      onClick={() => toggleCardNumber(n)}
+                      style={miniKeyStyle(cardNumColors[n % cardNumColors.length], cardSelection.numbers.includes(n))}
+                    >{n}</button>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 8 }}>
+                  {[7, 8, 9, 10, 11, 12].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="numKey"
+                      onClick={() => toggleCardNumber(n)}
+                      style={miniKeyStyle(cardNumColors[n % cardNumColors.length], cardSelection.numbers.includes(n))}
+                    >{n}</button>
+                  ))}
+                  <div
+                    aria-label={cardsFlip7 ? 'Bonus Flip 7 activado' : 'Bonus Flip 7 (seleccioná 7 cartas)'}
+                    style={{
+                      height: 42, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: F.display, fontSize: 12,
+                      border: `3px solid ${cardsFlip7 ? C.navyDark : C.navy}`,
+                      background: cardsFlip7 ? `linear-gradient(180deg, ${C.yellowBright} 0%, ${C.yellow} 50%, ${C.yellowDark} 100%)` : C.creamDark,
+                      color: cardsFlip7 ? C.navyDark : `${C.inkSoft}90`,
+                      boxShadow: cardsFlip7 ? shadowSm() : 'none',
+                      opacity: cardsFlip7 ? 1 : 0.6,
+                    }}
+                  >+25</div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 5, marginBottom: 8 }}>
+                  {['2', '4', '6', '8', '10'].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className="numKey"
+                      onClick={() => toggleCardMod(m)}
+                      style={modKeyStyle(cardSelection.mods.includes(m))}
+                    >+{m}</button>
+                  ))}
+                  <button
+                    type="button"
+                    className="numKey"
+                    onClick={() => toggleCardMod('x2')}
+                    style={modKeyStyle(cardSelection.mods.includes('x2'))}
+                  >x2</button>
+                </div>
+
+                <button
+                  type="button"
+                  className="numKey"
+                  onClick={pressScoreConfirm}
+                  aria-label="Confirmar"
+                  style={{
+                    width: '100%', height: 48, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
+                    boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: C.navy, cursor: 'pointer',
+                  }}
+                ><Check size={22} strokeWidth={3} /></button>
+              </>
+            )}
             </div>
           </div>
         </>
@@ -3193,6 +3369,7 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('flip7_lang', lang); } catch (_) {} }, [lang]);
 
   const [screen, setScreen] = useState('home');
+  const [rulesFromGame, setRulesFromGame] = useState(false);
   const [data, setData] = useState({ players: {}, games: [] });
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState([]);
@@ -3441,12 +3618,12 @@ export default function App() {
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => setScreen('rules')} />}
+      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => { setRulesFromGame(false); setScreen('rules'); }} />}
       {screen === 'setup' && (
         <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} />
       )}
       {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} />}
-      {screen === 'rules' && <RulesScreen onBack={() => setScreen('home')} tx={tx} />}
+      {screen === 'rules' && <RulesScreen onBack={() => setScreen(rulesFromGame ? 'game' : 'home')} fromGame={rulesFromGame} tx={tx} />}
       {targetPickerOpen && (
         <TargetPickerOverlay
           onCancel={() => setTargetPickerOpen(false)}
@@ -3454,7 +3631,7 @@ export default function App() {
           tx={tx}
         />
       )}
-      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onSetTiebreakMode={setTiebreakMode} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
+      {screen === 'game' && game && <GameScreen game={game} scores={scores} setScores={setScores} onCloseRound={closeRound} onAbandon={goHome} onChangeTarget={changeTarget} onResetGame={resetGame} onAddPlayer={addPlayerMidGame} onModifyRound={modifyRound} onSetTiebreakMode={setTiebreakMode} onViewRules={() => { setRulesFromGame(true); setScreen('rules'); }} existingPlayers={Object.keys(data.players)} tx={tx} lang={lang} />}
       {screen === 'gameover' && completedGame && <GameOverScreen game={completedGame} onHome={goHome} onRematchSame={rematchSame} onRematchEdit={() => setEditPlayersOpen(true)} tx={tx} />}
       {editPlayersOpen && completedGame && (
         <EditPlayersOverlay
