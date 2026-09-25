@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical, Delete, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
@@ -460,13 +460,13 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 
 // ═══════ DESIGN ATOMS ═══════
 
-function PageBg({ children, showEric = false, onScroll, hideFooter = false }) {
+function PageBg({ children, showEric = false, onScroll, hideFooter = false, scrollRef }) {
   return (
     <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
       <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
-      <div onScroll={onScroll} style={{
+      <div ref={scrollRef} onScroll={onScroll} style={{
         position: 'relative',
         flex: 1,
         minHeight: 0,
@@ -1767,6 +1767,31 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [keypadMode, setKeypadMode] = useState('digits');
   const [cardSelection, setCardSelection] = useState({ numbers: [], mods: [] });
   const scoreReplaceNextRef = useRef(false);
+  const scrollContainerRef = useRef(null);
+  const rowRefs = useRef([]);
+  const keypadPanelRef = useRef(null);
+  const keypadSpacerRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    const spacer = keypadSpacerRef.current;
+    if (!container || !spacer) return;
+    if (activeScoreIdx === null) {
+      spacer.style.height = '0px';
+      return;
+    }
+    const keypadEl = keypadPanelRef.current;
+    const keypadHeight = keypadEl ? keypadEl.getBoundingClientRect().height : 0;
+    spacer.style.height = `${keypadHeight}px`;
+    const rowEl = rowRefs.current[activeScoreIdx];
+    if (!rowEl || !keypadEl) return;
+    const rowRect = rowEl.getBoundingClientRect();
+    const keypadTop = keypadEl.getBoundingClientRect().top;
+    const overlap = rowRect.bottom - keypadTop + 16;
+    if (overlap > 0) {
+      container.scrollTop += overlap;
+    }
+  }, [activeScoreIdx, keypadMode]);
 
   useEffect(() => {
     if (confirmCountdown <= 0) return;
@@ -1985,10 +2010,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
   const headerActionBtn = { ...headerIconBtn, boxShadow: shadowSm() };
 
+  const keypadDimStyle = {
+    opacity: activeScoreIdx !== null ? 0.35 : 1,
+    filter: activeScoreIdx !== null ? 'grayscale(0.9)' : 'none',
+    transition: 'opacity 0.2s ease, filter 0.2s ease',
+  };
+
   return (
-    <PageBg showEric={false} hideFooter={activeScoreIdx !== null}>
+    <PageBg showEric={false} hideFooter={activeScoreIdx !== null} scrollRef={scrollContainerRef}>
       <div style={{ paddingTop: 24 }}>
-      <div ref={headerRef}>
+      <div ref={headerRef} style={keypadDimStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
         <div style={{
           ...headerIconBtn, width: 'auto', minWidth: 0, padding: '0 16px', cursor: 'default',
@@ -2039,13 +2070,18 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           const barColor = pct <= 33 ? C.red : pct <= 66 ? C.yellow : C.green;
           const isZeroEntered = scores[p] === '0';
 
+          const isDimmed = activeScoreIdx !== null && activeScoreIdx !== idx;
+
           return (
-            <div key={p} style={{
+            <div key={p} ref={(el) => { rowRefs.current[idx] = el; }} style={{
               background: C.creamLight,
               border: `2px solid ${C.navy}`,
               borderRadius: 10,
               padding: '6px 8px',
               boxShadow: '1px 1px 0 #00000010',
+              opacity: isDimmed ? 0.35 : 1,
+              filter: isDimmed ? 'grayscale(0.9)' : 'none',
+              transition: 'opacity 0.2s ease, filter 0.2s ease',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
@@ -2116,7 +2152,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           );
         })}
       </form>
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 12, ...keypadDimStyle }}>
         {missingScoreCount > 0 ? (
           <Btn
             onClick={handleCloseRound}
@@ -2129,6 +2165,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         )}
       </div>
       </div>
+
+      <div ref={keypadSpacerRef} style={{ height: 0 }} />
 
       {/* Modales de alertas, empate, opciones se mantienen igual pero dentro de PageBg showEric=false */}
       <QuickCalcOverlay open={isCalcOpen} onClose={() => setIsCalcOpen(false)} tx={tx} />
@@ -2589,7 +2627,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       {activeScoreIdx !== null && (() => {
         const cardNumColors = [C.redDeep, C.inkSoft, C.green, C.red, C.tealDeep, C.tealShadow, C.navy, C.redDark, C.tealDeep, C.yellowDeep];
-        const activePlayer = scoringPlayersSorted[activeScoreIdx];
         const cardKeyStyle = (color) => ({
           height: 56, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 12,
           boxShadow: `inset 0 0 0 3px ${C.yellowDark}, ${shadowSm()}`,
@@ -2624,10 +2661,11 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         });
         return (
         <>
-          <div onClick={closeScoreKeypad} style={{ position: 'fixed', inset: 0, background: `${C.navyDark}30`, zIndex: 89 }} />
-          <div style={{
+          <div onClick={closeScoreKeypad} style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 89 }} />
+          <div ref={keypadPanelRef} style={{
             position: 'fixed', left: '50%', bottom: 0, transform: 'translateX(-50%)',
-            width: '100%', maxWidth: 460, boxSizing: 'border-box', zIndex: 90,
+            width: 'calc(100% - 36px)', maxWidth: 424, boxSizing: 'border-box', zIndex: 90,
+            boxShadow: `5px 0 0 ${C.navyDark}`,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0, marginBottom: -3, position: 'relative', zIndex: 2 }}>
               <button type="button" onClick={() => setKeypadMode('digits')} style={tabStyle(keypadMode === 'digits')}>123</button>
@@ -2641,10 +2679,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               boxShadow: `0 -4px 14px ${C.navyDark}40`, padding: '10px 10px calc(10px + env(safe-area-inset-bottom))',
               position: 'relative', zIndex: 1,
             }}>
-            <div style={{ marginBottom: 8, padding: '0 2px' }}>
-              <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, letterSpacing: '0.5px' }}>{formatDisplayName(activePlayer)}</span>
-            </div>
-
             {keypadMode === 'cards' && (
               <div style={{
                 background: C.navy, border: `3px solid ${C.navyDark}`, borderRadius: 10,
@@ -2658,8 +2692,9 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                 }}>
                   ({numbersSorted.length ? numbersSorted.join(' + ') : '0'})
                   {cardsHasX2 && <strong style={{ fontWeight: 800 }}> x2</strong>}
-                  {flatModsSorted.map((m) => <span key={m}> (+{m})</span>)}
-                  {cardsFlip7 && <span> (+25)</span>}
+                  {(flatModsSorted.length > 0 || cardsFlip7) && (
+                    <span> ({[...flatModsSorted.map((m) => `+${m}`), ...(cardsFlip7 ? ['+25'] : [])].join(' ')})</span>
+                  )}
                 </span>
                 <span style={{ fontFamily: F.display, fontSize: 18, color: C.yellow, flexShrink: 0 }}>= {cardsTotal}</span>
               </div>
