@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical, Delete, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx } from './i18n.js';
@@ -460,7 +460,7 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 
 // ═══════ DESIGN ATOMS ═══════
 
-function PageBg({ children, showEric = false, onScroll }) {
+function PageBg({ children, showEric = false, onScroll, hideFooter = false }) {
   return (
     <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
@@ -481,18 +481,20 @@ function PageBg({ children, showEric = false, onScroll }) {
         zIndex: 2,
       }}>
         {children}
-        
+
         {/* Footer dinámico */}
-        <div style={{ textAlign: 'center', marginTop: 30, paddingBottom: 20 }}>
-          {showEric && (
-            <div style={{ fontFamily: F.serif, fontSize: 13, color: C.navy, lineHeight: 1.8, marginBottom: 4 }}>
-              A game by Eric Olsen
+        {!hideFooter && (
+          <div style={{ textAlign: 'center', marginTop: 30, paddingBottom: 20 }}>
+            {showEric && (
+              <div style={{ fontFamily: F.serif, fontSize: 13, color: C.navy, lineHeight: 1.8, marginBottom: 4 }}>
+                A game by Eric Olsen
+              </div>
+            )}
+            <div style={{ color: C.yellow, fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px', textShadow: `1px 1px 0 ${C.navy}80` }}>
+              Supported by @piantapp
             </div>
-          )}
-          <div style={{ color: C.yellow, fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px', textShadow: `1px 1px 0 ${C.navy}80` }}>
-            Supported by @piantapp
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -653,14 +655,6 @@ function CardsIcon({ size = 30 }) {
       <text x="12" y="14" textAnchor="middle" fontFamily={F.display} fontSize="7" fill={C.navy} fontWeight="bold">7</text>
     </svg>
   );
-}
-
-/** Selecciona todo el texto de un input. Se difiere un tick porque los navegadores móviles colocan el cursor
- *  después del foco/toque y pisarían una selección hecha de forma sincrónica. */
-function selectAllSoon(el) {
-  const run = () => { try { el.setSelectionRange(0, el.value.length); } catch (_) { el.select(); } };
-  run();
-  setTimeout(run, 0);
 }
 
 function BustCardsIcon({ size = 20, color = 'currentColor' }) {
@@ -841,7 +835,7 @@ function QuickCalcOverlay({ open, onClose, tx }) {
 
 // ═══════ SCREENS ═══════
 
-function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, setLang, tx }) {
+function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules, lang, setLang, tx }) {
   const [langOpen, setLangOpen] = useState(false);
   return (
     <PageBg showEric={true}>
@@ -907,6 +901,7 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, lang, s
         <Btn onClick={onRankings} variant="secondary" icon={Trophy} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rankings')}</Btn>
         <Btn onClick={onHistory} variant="secondary" icon={History} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_history')}</Btn>
         <Btn onClick={onPlayers} variant="secondary" icon={Users} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_players')}</Btn>
+        <Btn onClick={onRules} variant="secondary" icon={BookOpen} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_rules')}</Btn>
         <Btn onClick={() => setLangOpen(true)} variant="secondary" icon={Languages} style={{ fontSize: 18, padding: '12px 20px' }}>{tx('home_language')}</Btn>
       </div>
 
@@ -1660,6 +1655,81 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer,
   );
 }
 
+function RulesSection({ icon: Icon, title, children }) {
+  return (
+    <Card style={{ padding: 16, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 9, background: C.yellow, border: `2px solid ${C.navy}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}><Icon size={16} color={C.navy} strokeWidth={2.5} /></div>
+        <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1px' }}>{title}</div>
+      </div>
+      <div style={{ fontFamily: F.body, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55 }}>{children}</div>
+    </Card>
+  );
+}
+
+function RulesActionCard({ color, title, children }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+      <div style={{ width: 4, borderRadius: 4, background: color, flexShrink: 0 }} />
+      <div>
+        <div style={{ fontFamily: F.display, fontSize: 11.5, color: C.navy, letterSpacing: '0.5px', marginBottom: 2 }}>{title}</div>
+        <div>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function RulesScreen({ onBack, tx }) {
+  const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
+  const engageRef = useRef(0);
+  useEffect(() => {
+    if (headerRef.current && contentRef.current) {
+      engageRef.current = contentRef.current.getBoundingClientRect().top - headerRef.current.getBoundingClientRect().bottom;
+    }
+  }, []);
+
+  return (
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
+      <div ref={headerRef} style={{
+        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
+        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
+        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
+        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
+      }}>
+        <HeaderBar onBack={onBack} title={tx('rules_title')} />
+      </div>
+
+      <div ref={contentRef}>
+      <RulesSection icon={Target} title={tx('rules_objective_title')}>{tx('rules_objective_body')}</RulesSection>
+
+      <RulesSection icon={CardsIcon} title={tx('rules_deck_title')}>
+        <div style={{ marginBottom: 8 }}>{tx('rules_deck_numbers')}</div>
+        <div style={{ marginBottom: 8 }}>{tx('rules_deck_modifiers')}</div>
+        <div>{tx('rules_deck_actions')}</div>
+      </RulesSection>
+
+      <RulesSection icon={Zap} title={tx('rules_play_title')}>
+        <div style={{ marginBottom: 12 }}>{tx('rules_play_body')}</div>
+        <RulesActionCard color={C.blueLight} title={tx('rules_freeze_title')}>{tx('rules_freeze_body')}</RulesActionCard>
+        <RulesActionCard color={C.yellowDark} title={tx('rules_flip3_title')}>{tx('rules_flip3_body')}</RulesActionCard>
+        <RulesActionCard color={C.red} title={tx('rules_second_title')}>{tx('rules_second_body')}</RulesActionCard>
+      </RulesSection>
+
+      <RulesSection icon={Calculator} title={tx('rules_scoring_title')}>{tx('rules_scoring_body')}</RulesSection>
+
+      <RulesSection icon={Trophy} title={tx('rules_end_title')}>{tx('rules_end_body')}</RulesSection>
+      </div>
+    </PageBg>
+  );
+}
+
 function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onSetTiebreakMode, existingPlayers, tx, lang }) {
   const [modal, setModal] = useState(null);
   const [editingRound, setEditingRound] = useState(null);
@@ -1677,6 +1747,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [pendingTarget, setPendingTarget] = useState(null);
   const [confirmCountdown, setConfirmCountdown] = useState(0);
+  const [activeScoreIdx, setActiveScoreIdx] = useState(null);
+  const scoreReplaceNextRef = useRef(false);
 
   useEffect(() => {
     if (confirmCountdown <= 0) return;
@@ -1685,7 +1757,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   }, [confirmCountdown]);
   const headerRef = useRef(null);
   const contentRef = useRef(null);
-  const inputRefs = useRef([]);
 
   useEffect(() => {
     const closeAddPlayerSuggestions = (e) => {
@@ -1702,7 +1773,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const roundNum = game.rounds.length + 1;
   const target = game.targetScore;
 
-  const MAX_SCORE = 179;
+  const MAX_SCORE = 181;
   const WARN_SCORE = 70;
   const FLIP_NEAR_PTS = 40;
 
@@ -1810,27 +1881,32 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const missingScoreCount = scoringPlayersSorted.filter(p => scores[p] === '' || scores[p] === undefined).length;
 
-  const focusScoreInputAt = (idx) => {
-    const el = inputRefs.current[idx];
-    if (!el) return;
-    setTimeout(() => {
-      el.focus({ preventScroll: true });
-      el.select();
-    }, 0);
+  const activateScoreCell = (idx) => {
+    scoreReplaceNextRef.current = true;
+    setActiveScoreIdx(idx);
   };
 
-  const handleScoreKeyDown = (e, currentIdx) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    e.stopPropagation();
+  const closeScoreKeypad = () => setActiveScoreIdx(null);
 
-    const nextIdx = currentIdx + 1;
-    if (nextIdx < scoringPlayersSorted.length) {
-      focusScoreInputAt(nextIdx);
-      return;
-    }
-    e.currentTarget.blur();
-    handleCloseRound();
+  const pressScoreDigit = (digit) => {
+    if (activeScoreIdx === null) return;
+    const p = scoringPlayersSorted[activeScoreIdx];
+    const base = scoreReplaceNextRef.current ? '' : (scores[p] ?? '');
+    let next = (base + digit).replace(/^0+(?=\d)/, '');
+    if (next.length > 3) next = next.slice(0, 3);
+    setScores({ ...scores, [p]: next });
+    scoreReplaceNextRef.current = false;
+  };
+
+  const pressScoreBackspace = () => {
+    if (activeScoreIdx === null) return;
+    const p = scoringPlayersSorted[activeScoreIdx];
+    setScores({ ...scores, [p]: (scores[p] ?? '').slice(0, -1) });
+    scoreReplaceNextRef.current = false;
+  };
+
+  const pressScoreConfirm = () => {
+    closeScoreKeypad();
   };
 
   const handleScoresFormSubmit = (e) => {
@@ -1862,7 +1938,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const headerActionBtn = { ...headerIconBtn, boxShadow: shadowSm() };
 
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} hideFooter={activeScoreIdx !== null}>
       <div style={{ paddingTop: 24 }}>
       <div ref={headerRef}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
@@ -1942,41 +2018,29 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <input
-                    ref={(el) => {
-                      if (el) inputRefs.current[idx] = el;
-                      else delete inputRefs.current[idx];
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    enterKeyHint={idx < scoringPlayersSorted.length - 1 ? 'next' : 'done'}
-                    autoComplete="off"
-                    name={`score-${p}`}
-                    value={scores[p] ?? ''}
-                    onFocus={(e) => selectAllSoon(e.target)}
-                    onClick={(e) => selectAllSoon(e.target)}
-                    onMouseUp={(e) => e.preventDefault()}
-                    onChange={(e) => setScores({ ...scores, [p]: e.target.value.replace(/[^0-9]/g, '') })}
-                    onKeyDown={(e) => handleScoreKeyDown(e, idx)}
-                    placeholder="-"
+                  <button
+                    type="button"
+                    onClick={() => activateScoreCell(idx)}
+                    aria-label={`${tx('game_score_round')} ${formatDisplayName(p)}`}
                     style={{
                       width: 52,
                       height: 32,
                       boxSizing: 'border-box',
                       background: C.white,
-                      border: `2px solid ${C.navy}`,
+                      border: `2px solid ${activeScoreIdx === idx ? C.yellowDeep : C.navy}`,
                       borderRadius: 7,
                       padding: '0 4px',
                       textAlign: 'center',
                       fontFamily: F.display,
                       fontSize: 15,
                       lineHeight: 1,
-                      color: C.navy,
-                      outline: 'none',
+                      color: scores[p] ? C.navy : `${C.navy}70`,
+                      outline: activeScoreIdx === idx ? `2px solid ${C.yellow}` : 'none',
+                      outlineOffset: 1,
+                      cursor: 'pointer',
                       boxShadow: `inset 1px 1px 0 ${C.creamDark}`,
                     }}
-                  />
+                  >{scores[p] || '-'}</button>
                   <button
                     type="button"
                     onClick={() => setScores({ ...scores, [p]: '0' })}
@@ -2473,6 +2537,69 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         );
       })()}
       </div>
+
+      {activeScoreIdx !== null && (() => {
+        const cardNumColors = [C.redDeep, C.inkSoft, C.green, C.red, C.tealDeep, C.tealShadow, C.navy, C.redDark, C.tealDeep, C.yellowDeep];
+        const activePlayer = scoringPlayersSorted[activeScoreIdx];
+        const cardKeyStyle = (color) => ({
+          height: 56, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 12,
+          boxShadow: `inset 0 0 0 3px ${C.yellowDark}, ${shadowSm()}`,
+          fontFamily: F.display, fontSize: 24, color, cursor: 'pointer',
+        });
+        return (
+        <>
+          <div onClick={closeScoreKeypad} style={{ position: 'fixed', inset: 0, background: `${C.navyDark}30`, zIndex: 89 }} />
+          <div style={{
+            position: 'fixed', left: '50%', bottom: 0, transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 460, boxSizing: 'border-box',
+            background: C.cream, borderTop: `3px solid ${C.navy}`, borderRadius: '16px 16px 0 0',
+            boxShadow: `0 -4px 14px ${C.navyDark}40`, padding: '10px 10px calc(10px + env(safe-area-inset-bottom))',
+            zIndex: 90,
+          }}>
+            <div style={{ marginBottom: 8, padding: '0 2px', textAlign: 'left' }}>
+              <span style={{ fontFamily: F.display, fontSize: 18, color: C.navy, letterSpacing: '0.5px' }}>{formatDisplayName(activePlayer)}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className="numKey"
+                  onClick={() => pressScoreDigit(String(d))}
+                  style={cardKeyStyle(cardNumColors[d % cardNumColors.length])}
+                >{d}</button>
+              ))}
+              <button
+                type="button"
+                className="numKey"
+                onClick={pressScoreBackspace}
+                aria-label="Borrar"
+                style={{
+                  height: 56, background: C.creamLight, border: `3px solid ${C.red}`, borderRadius: 12,
+                  boxShadow: shadowSm(C.redDark), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, cursor: 'pointer',
+                }}
+              ><Delete size={22} strokeWidth={2.5} /></button>
+              <button
+                type="button"
+                className="numKey"
+                onClick={() => pressScoreDigit('0')}
+                style={cardKeyStyle(cardNumColors[0])}
+              >0</button>
+              <button
+                type="button"
+                className="numKey"
+                onClick={pressScoreConfirm}
+                aria-label="Confirmar"
+                style={{
+                  height: 56, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
+                  boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.navy, cursor: 'pointer',
+                }}
+              ><Check size={24} strokeWidth={3} /></button>
+            </div>
+          </div>
+        </>
+        );
+      })()}
     </PageBg>
   );
 }
@@ -3279,6 +3406,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
         .hdrBtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1F2A6B !important; }
+        .numKey:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1F2A6B !important; }
         @keyframes cardRiseIn {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
@@ -3313,11 +3441,12 @@ export default function App() {
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} />}
+      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => setScreen('rules')} />}
       {screen === 'setup' && (
         <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} />
       )}
       {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} />}
+      {screen === 'rules' && <RulesScreen onBack={() => setScreen('home')} tx={tx} />}
       {targetPickerOpen && (
         <TargetPickerOverlay
           onCancel={() => setTargetPickerOpen(false)}
