@@ -680,159 +680,6 @@ function RankBadge({ rank, size = 'sm' }) {
   );
 }
 
-/** Calculadora auxiliar de puntos (no modifica la partida). */
-function QuickCalcOverlay({ open, onClose, tx }) {
-  const [entry, setEntry] = useState('0');
-  const [accum, setAccum] = useState(0);
-  const [formula, setFormula] = useState('');
-
-  useEffect(() => {
-    if (!open) return;
-    setEntry('0');
-    setAccum(0);
-    setFormula('');
-  }, [open]);
-
-  if (!open) return null;
-
-  const parseEntry = () => parseInt(entry, 10) || 0;
-
-  const appendDigit = (d) => {
-    setEntry((e) => (e === '0' ? String(d) : `${e}${d}`));
-  };
-
-  const clearAll = () => {
-    setEntry('0');
-    setAccum(0);
-    setFormula('');
-  };
-
-  const handlePlus = () => {
-    const v = parseEntry();
-    const next = accum + v;
-    setAccum(next);
-    setFormula((f) => (f ? `${f} + ${v}` : String(v)));
-    setEntry('0');
-  };
-
-  const handleEquals = () => {
-    const total = accum + parseEntry();
-    setAccum(0);
-    setEntry(String(total));
-    setFormula('');
-  };
-
-  const handleMul2 = () => {
-    setEntry((e) => String((parseInt(e, 10) || 0) * 2));
-  };
-
-  const handlePlus25 = () => {
-    setEntry((e) => String((parseInt(e, 10) || 0) + 25));
-  };
-
-  const keyStyle = {
-    background: C.creamLight,
-    border: `3px solid ${C.navy}`,
-    borderRadius: 10,
-    fontFamily: F.display,
-    fontSize: 18,
-    color: C.navy,
-    cursor: 'pointer',
-    padding: '10px 4px',
-    minHeight: 44,
-    boxShadow: shadowSm(),
-  };
-  const actionStyle = { ...keyStyle, background: C.yellow };
-  const opKeyStyle = {
-    ...actionStyle,
-    gridColumn: 4,
-    gridRow: 'auto',
-    alignSelf: 'stretch',
-    minHeight: 0,
-    fontSize: 20,
-    padding: '12px 4px',
-  };
-
-  return (
-    <Overlay>
-      <Card style={{ padding: 16, maxWidth: 320, width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calculator size={20} color={C.navy} strokeWidth={2.5} />
-            <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1px' }}>{tx('game_calc_title')}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={tx('game_close')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: C.navy,
-              cursor: 'pointer',
-              padding: 4,
-              display: 'flex',
-            }}
-          >
-            <X size={22} strokeWidth={3} />
-          </button>
-        </div>
-        <div style={{
-          background: C.navy,
-          border: `3px solid ${C.navyDark}`,
-          borderRadius: 10,
-          padding: '10px 12px',
-          marginBottom: 12,
-          minHeight: 56,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-end',
-        }}>
-          {formula ? (
-            <div style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              color: C.yellow,
-              opacity: 0.85,
-              textAlign: 'right',
-              marginBottom: 4,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>{formula}</div>
-          ) : null}
-          <div style={{
-            fontFamily: F.display,
-            fontSize: 32,
-            color: C.yellow,
-            textAlign: 'right',
-            lineHeight: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>{entry}</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-          <button type="button" onClick={clearAll} style={actionStyle}>C</button>
-          <button type="button" onClick={handlePlus25} style={actionStyle}>+25</button>
-          <button type="button" onClick={handleMul2} style={actionStyle}>×2</button>
-          {[7, 8, 9].map((d) => (
-            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
-          ))}
-          {[4, 5, 6].map((d) => (
-            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
-          ))}
-          {[1, 2, 3].map((d) => (
-            <button key={d} type="button" onClick={() => appendDigit(d)} style={keyStyle}>{d}</button>
-          ))}
-          <button type="button" onClick={() => appendDigit(0)} style={{ ...keyStyle, gridColumn: 'span 3' }}>0</button>
-          <button type="button" onClick={handlePlus} style={{ ...opKeyStyle, gridRow: '1 / 3' }}>+</button>
-          <button type="button" onClick={handleEquals} style={{ ...opKeyStyle, gridRow: '3 / 6' }}>=</button>
-        </div>
-      </Card>
-    </Overlay>
-  );
-}
-
 // ═══════ SCREENS ═══════
 
 function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules, lang, setLang, tx }) {
@@ -1180,8 +1027,8 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
             {tx('setup_start')}
             <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              minWidth: 20, height: 20, borderRadius: 999, background: C.navy, color: C.yellow,
-              fontFamily: F.display, fontSize: 12, padding: '0 6px',
+              minWidth: 26, height: 26, boxSizing: 'border-box', borderRadius: 999, background: C.navy, color: C.yellow,
+              fontFamily: F.body, fontWeight: 800, fontSize: 15, lineHeight: 1, padding: '0 7px', marginLeft: 2,
             }}>{selected.length}</span>
           </>
         )}
@@ -1655,6 +1502,11 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer,
   );
 }
 
+/** Renderiza los tramos entre **...** en negrita. */
+function renderBold(text) {
+  return text.split(/\*\*(.+?)\*\*/).map((part, i) => (i % 2 ? <strong key={i} style={{ color: C.navy }}>{part}</strong> : part));
+}
+
 function RulesSection({ icon: Icon, title, children }) {
   return (
     <Card style={{ padding: 16, marginBottom: 12 }}>
@@ -1665,7 +1517,9 @@ function RulesSection({ icon: Icon, title, children }) {
         }}><Icon size={16} color={C.navy} strokeWidth={2.5} /></div>
         <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1px' }}>{title}</div>
       </div>
-      <div style={{ fontFamily: F.body, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55 }}>{children}</div>
+      <div style={{ fontFamily: F.body, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55 }}>
+        {typeof children === 'string' ? renderBold(children) : children}
+      </div>
     </Card>
   );
 }
@@ -1726,19 +1580,28 @@ function RulesScreen({ onBack, tx, fromGame = false }) {
       <RulesSection icon={Target} title={tx('rules_objective_title')}>{tx('rules_objective_body')}</RulesSection>
 
       <RulesSection icon={CardsIcon} title={tx('rules_deck_title')}>
-        <div style={{ marginBottom: 8 }}>{tx('rules_deck_numbers')}</div>
-        <div style={{ marginBottom: 8 }}>{tx('rules_deck_modifiers')}</div>
-        <div>{tx('rules_deck_actions')}</div>
+        <div style={{ marginBottom: 8 }}>{renderBold(tx('rules_deck_numbers'))}</div>
+        <div style={{ marginBottom: 8 }}>{renderBold(tx('rules_deck_modifiers'))}</div>
+        <div>{renderBold(tx('rules_deck_actions'))}</div>
       </RulesSection>
 
       <RulesSection icon={Zap} title={tx('rules_play_title')}>
-        <div style={{ marginBottom: 12 }}>{tx('rules_play_body')}</div>
+        <div style={{ marginBottom: 12, whiteSpace: 'pre-line' }}>{renderBold(tx('rules_play_body'))}</div>
         <RulesActionCard color={C.blueLight} title={tx('rules_freeze_title')}>{tx('rules_freeze_body')}</RulesActionCard>
         <RulesActionCard color={C.yellowDark} title={tx('rules_flip3_title')}>{tx('rules_flip3_body')}</RulesActionCard>
         <RulesActionCard color={C.red} title={tx('rules_second_title')}>{tx('rules_second_body')}</RulesActionCard>
       </RulesSection>
 
-      <RulesSection icon={Calculator} title={tx('rules_scoring_title')}>{tx('rules_scoring_body')}</RulesSection>
+      <RulesSection icon={Calculator} title={tx('rules_scoring_title')}>
+        <ol style={{ margin: 0, padding: 0, listStyle: 'none', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {tx('rules_scoring_body').split(/\s*\d\)\s*/).filter(Boolean).map((step, i) => (
+            <li key={i} style={{ display: 'flex', gap: 8 }}>
+              <span style={{ flexShrink: 0, minWidth: 14, fontWeight: 700, color: C.navy }}>{i + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </RulesSection>
 
       <RulesSection icon={Trophy} title={tx('rules_end_title')}>{tx('rules_end_body')}</RulesSection>
       </div>
@@ -1748,6 +1611,8 @@ function RulesScreen({ onBack, tx, fromGame = false }) {
 
 function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChangeTarget, onResetGame, onAddPlayer, onModifyRound, onSetTiebreakMode, onViewRules, existingPlayers, tx, lang }) {
   const [modal, setModal] = useState(null);
+  // Adónde vuelve "Cancelar" en la lista de rondas: al menú de opciones o cerrar (si se abrió desde el header).
+  const [selectRoundBack, setSelectRoundBack] = useState('options');
   const [editingRound, setEditingRound] = useState(null);
   const [editScores, setEditScores] = useState({});
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -1760,7 +1625,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   const [flippeadorAlert, setFlippeadorAlert] = useState(null);
   const [spicyAlert, setSpicyAlert] = useState(null);
   const [tiebreakLeaders, setTiebreakLeaders] = useState([]);
-  const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [pendingTarget, setPendingTarget] = useState(null);
   const [confirmCountdown, setConfirmCountdown] = useState(0);
   const [activeScoreIdx, setActiveScoreIdx] = useState(null);
@@ -2021,27 +1885,24 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       <div style={{ paddingTop: 24 }}>
       <div ref={headerRef} style={keypadDimStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-        <div style={{
-          ...headerIconBtn, width: 'auto', minWidth: 0, padding: '0 16px', cursor: 'default',
-          flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left',
-        }}>
+        <button
+          type="button"
+          onClick={() => { setSelectRoundBack(null); setModal('selectRound'); }}
+          aria-label={tx('game_opt_edit')}
+          className="hdrBtn"
+          style={{
+            ...headerActionBtn, width: 'auto', minWidth: 0, padding: '0 16px', cursor: 'pointer',
+            flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', textAlign: 'left',
+          }}
+        >
           <div style={{ fontFamily: F.display, fontSize: 17, color: C.navy, letterSpacing: '1px', lineHeight: 1, whiteSpace: 'nowrap' }}>
             {tx('game_round')} {String(roundNum).padStart(2, '0')}
           </div>
           <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: C.navy, letterSpacing: '0.5px', marginTop: 4, lineHeight: 1, whiteSpace: 'nowrap', opacity: 0.85 }}>
             {tx('game_goal')}: {target} {tx('game_pts')}
           </div>
-        </div>
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={() => setIsCalcOpen(true)}
-            aria-label={tx('game_calc_title')}
-            className="hdrBtn"
-            style={headerActionBtn}
-          >
-            <Calculator size={24} strokeWidth={2.5} color={C.navy} />
-          </button>
           <button
             type="button"
             onClick={() => setModal('options')}
@@ -2161,7 +2022,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             style={{ padding: '12px 8px', gap: 6, background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none', fontSize: 'clamp(10px, 3.3vw, 15px)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
           >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
         ) : (
-          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')}</Btn>
+          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')} {String(roundNum).padStart(2, '0')}</Btn>
         )}
       </div>
       </div>
@@ -2169,7 +2030,6 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       <div ref={keypadSpacerRef} style={{ height: 0 }} />
 
       {/* Modales de alertas, empate, opciones se mantienen igual pero dentro de PageBg showEric=false */}
-      <QuickCalcOverlay open={isCalcOpen} onClose={() => setIsCalcOpen(false)} tx={tx} />
 
       {modal === 'flippeadorAlert' && flippeadorAlert && (
         <Overlay><Card style={{ padding: 25, maxWidth: 360, width: '90%', textAlign: 'center', border: `4px solid ${C.navy}` }}>
@@ -2257,7 +2117,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <OptionRow icon={Target} title={tx('game_opt_target')} subtitle={tx('game_opt_target_sub', { n: target })} onClick={() => { setPendingTarget(null); setModal('target'); }} />
-            <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => setModal('selectRound')} />
+            <OptionRow icon={Edit3} title={tx('game_opt_edit')} subtitle={tx('game_opt_edit_sub')} onClick={() => { setSelectRoundBack('options'); setModal('selectRound'); }} />
             <OptionRow icon={UserPlus} title={tx('game_opt_add')} subtitle={tx('game_opt_add_sub')} onClick={() => { setModal('addPlayer'); setNewPlayerName(''); setNewPlayerPoints('0'); setNewPlayerCustomPts(''); setSuppressAddPlayerSuggestions(false); setAddPlayerSuggestionHoverIdx(null); }} />
             <OptionRow icon={RotateCcw} title={tx('game_opt_reset')} subtitle={tx('game_opt_reset_sub')} onClick={() => { setConfirmCountdown(2); setModal('reset'); }} />
             <OptionRow icon={BookOpen} title={tx('game_opt_rules')} subtitle={tx('game_opt_rules_sub')} onClick={() => { setModal(null); onViewRules(); }} />
@@ -2280,20 +2140,25 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               );
             })}
           </div>
-          {pendingTarget !== null && pendingTarget !== target && (() => {
+          {pendingTarget !== null && pendingTarget !== target ? (() => {
             const [confirmBefore, confirmAfter] = tx('game_confirm_target').split('{n}');
             return (
-              <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10 }}>
-                {confirmBefore}
+              <Btn onClick={() => { onChangeTarget(pendingTarget); setModal(null); setPendingTarget(null); }} style={{ marginBottom: 10, padding: '10px 8px', gap: 8, fontSize: 14, whiteSpace: 'nowrap' }}>
+                {confirmBefore.trim()}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  minWidth: 30, height: 30, borderRadius: 999, background: C.navy, color: C.yellow,
-                  fontFamily: F.display, fontSize: 16, padding: '0 8px',
+                  minWidth: 26, height: 26, borderRadius: 999, background: C.navy, color: C.yellow,
+                  fontFamily: F.display, fontSize: 13, padding: '0 8px', textShadow: 'none',
                 }}>{pendingTarget}</span>
                 {confirmAfter}
               </Btn>
             );
-          })()}
+          })() : (
+            <Btn
+              disabled
+              style={{ marginBottom: 10, padding: '10px 8px', fontSize: 14, whiteSpace: 'nowrap', background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none' }}
+            >{tx('game_opt_target')}</Btn>
+          )}
           <Btn onClick={() => { setModal('options'); setPendingTarget(null); }} variant="secondary">{tx('setup_cancel')}</Btn>
         </Card></Overlay>
       )}
@@ -2303,7 +2168,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           {game.rounds.length === 0 ? (
             <>
               <div style={{ fontFamily: F.body, fontSize: 14, color: C.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>{tx('game_no_rounds_yet')}</div>
-              <Btn onClick={() => setModal('options')}>{tx('game_accept')}</Btn>
+              <Btn onClick={() => setModal(selectRoundBack)}>{tx('game_accept')}</Btn>
             </>
           ) : (
             <>
@@ -2311,13 +2176,13 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 14 }}>
                 {game.rounds.map((r, idx) => ({ r, idx })).reverse().map(({ r, idx }) => (
                   <button key={idx} onClick={() => { setEditScores({ ...r.scores }); setEditingRound(idx); setModal('editRound'); }} style={{ width: '100%', background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12 }}>#{idx + 1}</div>
+                    <div style={{ width: 30, height: 30, borderRadius: 999, background: C.yellow, border: `2px solid ${C.navy}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, color: C.navy }}>#{idx + 1}</div>
                     <div style={{ flex: 1, fontFamily: F.body, fontSize: 11, textAlign: 'left', color: C.ink }}>{game.players.map(p => `${formatDisplayName(p)}: ${r.scores[p] ?? 0}`).join(' · ')}</div>
                     <Edit3 size={14} color={C.navy} />
                   </button>
                 ))}
               </div>
-              <Btn onClick={() => setModal('options')} variant="secondary">{tx('setup_cancel')}</Btn>
+              <Btn onClick={() => setModal(selectRoundBack)} variant="secondary">{tx('setup_cancel')}</Btn>
             </>
           )}
         </Card></Overlay>
@@ -2362,8 +2227,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><AlertTriangle color={C.red} size={22} /><div style={{ fontFamily: F.display, fontSize: 16, color: C.navy }}>{tx('game_reset_q')}</div></div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal('options')} variant="secondary" style={{ flex: 1 }}>{tx('setup_cancel')}</Btn>
-            <Btn onClick={() => { onResetGame(); setModal(null); }} variant="danger" disabled={confirmCountdown > 0} style={{ flex: 1 }}>
+            <Btn onClick={() => setModal('options')} variant="secondary" style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+            <Btn onClick={() => { onResetGame(); setModal(null); }} variant="danger" disabled={confirmCountdown > 0} style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14 }}>
               {confirmCountdown > 0 ? `${tx('game_reset')} (${confirmCountdown})` : tx('game_reset')}
             </Btn>
           </div>
@@ -2377,8 +2242,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             <div style={{ fontFamily: F.display, fontSize: 16, color: C.red }}>{tx('game_abandon_q')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setModal('options')} variant="secondary" style={{ flex: 1 }}>{tx('game_back')}</Btn>
-            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger" disabled={confirmCountdown > 0} style={{ flex: 1 }}>
+            <Btn onClick={() => setModal('options')} variant="secondary" style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14 }}>{tx('game_back')}</Btn>
+            <Btn onClick={() => { setModal(null); onAbandon(); }} variant="danger" disabled={confirmCountdown > 0} style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14 }}>
               {confirmCountdown > 0 ? `${tx('game_abandon')} (${confirmCountdown})` : tx('game_abandon')}
             </Btn>
           </div>
@@ -2628,8 +2493,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
       {activeScoreIdx !== null && (() => {
         const cardNumColors = [C.redDeep, C.inkSoft, C.green, C.red, C.tealDeep, C.tealShadow, C.navy, C.redDark, C.tealDeep, C.yellowDeep];
         const cardKeyStyle = (color) => ({
-          height: 56, background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 12,
-          boxShadow: `inset 0 0 0 3px ${C.yellowDark}, ${shadowSm()}`,
+          height: 56, background: C.creamLight, border: `2px solid ${C.bluePale}`, borderRadius: 12,
+          boxShadow: `0 4px 0 ${C.blueLight}`,
           fontFamily: F.display, fontSize: 24, color, cursor: 'pointer',
         });
         const tabStyle = (active) => ({
@@ -2649,14 +2514,14 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         const flatModsSorted = cardSelection.mods.filter((m) => m !== 'x2').sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const miniKeyStyle = (color, selected) => ({
           height: 42, background: selected ? C.yellow : C.creamLight,
-          border: `3px solid ${selected ? C.navyDark : C.navy}`, borderRadius: 10,
-          boxShadow: selected ? `inset 1px 1px 0 ${C.yellowDark}` : `inset 0 0 0 2px ${C.yellowDark}, ${shadowSm()}`,
+          border: `2px solid ${selected ? C.yellowDeep : C.bluePale}`, borderRadius: 10,
+          boxShadow: `0 ${selected ? 1 : 3}px 0 ${selected ? C.yellowDeep : C.blueLight}`,
           fontFamily: F.display, fontSize: 16, color: selected ? C.navy : color, cursor: 'pointer',
         });
         const modKeyStyle = (selected) => ({
           height: 38, background: selected ? C.yellow : C.creamLight,
-          border: `3px solid ${selected ? C.navyDark : C.navy}`, borderRadius: 10,
-          boxShadow: selected ? `inset 1px 1px 0 ${C.yellowDark}` : shadowSm(),
+          border: `2px solid ${selected ? C.yellowDeep : C.bluePale}`, borderRadius: 10,
+          boxShadow: `0 ${selected ? 1 : 3}px 0 ${selected ? C.yellowDeep : C.blueLight}`,
           fontFamily: F.display, fontSize: 13, color: C.navy, cursor: 'pointer',
         });
         return (
@@ -2717,8 +2582,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   onClick={pressScoreBackspace}
                   aria-label="Borrar"
                   style={{
-                    height: 56, background: C.creamLight, border: `3px solid ${C.red}`, borderRadius: 12,
-                    boxShadow: shadowSm(C.redDark), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, cursor: 'pointer',
+                    height: 56, background: C.creamLight, border: `2px solid ${C.red}80`, borderRadius: 12,
+                    boxShadow: `0 4px 0 ${C.red}80`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, cursor: 'pointer',
                   }}
                 ><Delete size={22} strokeWidth={2.5} /></button>
                 <button
@@ -2733,8 +2598,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   onClick={pressScoreConfirm}
                   aria-label="Confirmar"
                   style={{
-                    height: 56, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
-                    boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.navy, cursor: 'pointer',
+                    height: 56, background: C.green, border: `2px solid ${C.green}`, borderRadius: 12,
+                    boxShadow: '0 4px 0 #5BAE6A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.navy, cursor: 'pointer',
                   }}
                 ><Check size={24} strokeWidth={3} /></button>
               </div>
@@ -2799,8 +2664,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
                   onClick={pressScoreConfirm}
                   aria-label="Confirmar"
                   style={{
-                    width: '100%', height: 48, background: C.green, border: `3px solid ${C.navy}`, borderRadius: 12,
-                    boxShadow: shadowSm(), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: 48, background: C.green, border: `2px solid ${C.green}`, borderRadius: 12,
+                    boxShadow: '0 4px 0 #5BAE6A', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: C.navy, cursor: 'pointer',
                   }}
                 ><Check size={22} strokeWidth={3} /></button>
@@ -3618,7 +3483,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap');
         .hdrBtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1F2A6B !important; }
-        .numKey:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1F2A6B !important; }
+        .numKey:active { transform: translateY(3px); box-shadow: 0 1px 0 #8FB6D9 !important; }
         @keyframes cardRiseIn {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
