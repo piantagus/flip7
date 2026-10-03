@@ -1,6 +1,5 @@
 -- Usuarios registrados: permisos + registro de actividad.
--- TODAVÍA NO APLICADO. Aplicar recién cuando la versión de la app con ingreso esté publicada:
--- con la versión anterior, el tacho parecería borrar sin hacerlo y fallaría guardar un jugador existente.
+-- Aplicado en producción el 2026-10-03 (después de publicar la versión de la app con ingreso).
 
 -- 1) Modificar y borrar: solo usuarios ingresados. Leer y crear siguen abiertos para todos.
 drop policy if exists "actualizar_games" on public.games;
