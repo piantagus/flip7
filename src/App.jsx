@@ -442,15 +442,6 @@ function groupSavedPlayersByAlpha(players) {
   return groups;
 }
 
-const MS_24H = 24 * 60 * 60 * 1000;
-
-function isWithinLast24Hours(isoDate) {
-  if (!isoDate) return false;
-  const ts = Date.parse(isoDate);
-  if (!Number.isFinite(ts)) return false;
-  return Date.now() - ts < MS_24H;
-}
-
 function fmtDate(iso, lang = 'es') {
   if (!iso) return '';
   try {
@@ -1089,7 +1080,7 @@ function TargetPickerOverlay({ onCancel, onConfirm, tx }) {
   );
 }
 
-function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx, session }) {
+function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx, session, onRequireAuth }) {
   const [name, setName] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
@@ -1124,8 +1115,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
     : null;
   const showLastGameReplay = lastGame
     && lastGame.players?.length >= 2
-    && selected.length === 0
-    && isWithinLast24Hours(lastGame.date ?? lastGame.created_at);
+    && selected.length === 0;
   const savedPlayerGroups = groupSavedPlayersByAlpha(existing);
 
   const qq = foldForMatch(name.trim());
@@ -1378,6 +1368,36 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           </button>
         </div>
       </Card>
+
+      {/* Sin sesión: mismo botón en gris, sin nombres y con candado; lleva a "Ingresar". */}
+      {!session && selected.length === 0 && (
+        <button
+          type="button"
+          onClick={onRequireAuth}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
+            background: `${C.navy}12`, border: `3px solid ${C.navy}55`, borderRadius: 12,
+            padding: '10px 14px', marginBottom: 12, color: C.inkSoft,
+          }}
+        >
+          <div style={{
+            width: 26, height: 26, borderRadius: 999, background: `${C.navy}18`, color: C.inkSoft,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            border: `2px solid ${C.navy}55`,
+          }}>
+            <RotateCcw size={14} strokeWidth={2.5} />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontFamily: F.display, fontSize: 8, letterSpacing: '1.5px', color: C.inkSoft, marginBottom: 2 }}>
+              {tx('setup_last_title')}
+            </div>
+            <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {tx('setup_last_locked')}
+            </div>
+          </div>
+          <Lock size={18} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+        </button>
+      )}
 
       {showLastGameReplay && (
         <button
@@ -3760,7 +3780,7 @@ export default function App() {
       `}</style>
       {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} session={session} onOpenAuth={openAuth} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => { setRulesFromGame(false); setScreen('rules'); }} />}
       {screen === 'setup' && (
-        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} session={session} />
+        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} session={session} onRequireAuth={openAuth} />
       )}
       {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} canEdit={canEdit} onRequireAuth={openAuth} />}
       {screen === 'rules' && <RulesScreen onBack={() => setScreen(rulesFromGame ? 'game' : 'home')} fromGame={rulesFromGame} tx={tx} />}
