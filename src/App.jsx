@@ -46,6 +46,20 @@ const F = {
 const shadow = (color = C.navyDark, x = 4, y = 4) => `${x}px ${y}px 0 ${color}`;
 const shadowSm = (color = C.navyDark) => shadow(color, 3, 3);
 
+const INSTAGRAM_URL = 'https://www.instagram.com/piantagus/';
+
+// Padding de página (simétrico). Cada elemento con sombra dura reserva el ancho de su sombra
+// con marginRight, así todo (con o sin sombra) termina en la misma línea a la derecha.
+const PAGE_PAD = { t: 20, r: 18, b: 20, l: 18 };
+const PAGE_PAD_CSS = `${PAGE_PAD.t}px ${PAGE_PAD.r}px ${PAGE_PAD.b}px ${PAGE_PAD.l}px`;
+
+/** Header sticky: en reposo no tapa el marco; al scrollear pasa a barra de borde a borde. */
+const stickyHeaderStyle = (scrolled) => ({
+  position: 'sticky', top: -PAGE_PAD.t,
+  margin: scrolled ? `-10px -${PAGE_PAD.r}px 0 -${PAGE_PAD.l}px` : 0,
+  padding: scrolled ? `10px ${PAGE_PAD.r}px 10px ${PAGE_PAD.l}px` : '0 0 6px',
+});
+
 // ═══════ STORAGE ═══════
 function emptyPlayerStats(name) {
   return { name, gamesPlayed: 0, wins: 0, totalPoints: 0, highestRound: 0, bestGameScore: 0, roundsPlayed: 0 };
@@ -443,15 +457,7 @@ function fmtDate(iso, lang = 'es') {
   } catch { return ''; }
 }
 
-/** Subtítulo en pestaña Ganadas: partidas y victorias en palabras (plural correcto). */
-function formatGamesWinsLine(stats, lang) {
-  const g = stats.gamesPlayed;
-  const w = stats.wins;
-  if (lang === 'en') return `${g} game${g !== 1 ? 's' : ''} · ${w} win${w !== 1 ? 's' : ''}`;
-  return `${g} partida${g !== 1 ? 's' : ''} · ${w} ganada${w !== 1 ? 's' : ''}`;
-}
-
-/** Pie EFICAZ: mismas palabras sin abreviar. */
+/** Pie de cada fila de estadísticas: ganadas · partidas, sin abreviar. */
 function formatWinsGamesEff(wins, gamesPlayed, lang) {
   if (!gamesPlayed) return '';
   if (lang === 'en') return `${wins} win${wins !== 1 ? 's' : ''} · ${gamesPlayed} game${gamesPlayed !== 1 ? 's' : ''}`;
@@ -460,7 +466,7 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 
 // ═══════ DESIGN ATOMS ═══════
 
-function PageBg({ children, showEric = false, onScroll, hideFooter = false, scrollRef }) {
+function PageBg({ children, showEric = false, onScroll, hideFooter = false, scrollRef, footerLink = false }) {
   return (
     <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
@@ -475,13 +481,13 @@ function PageBg({ children, showEric = false, onScroll, hideFooter = false, scro
         maxWidth: 460,
         width: '100%',
         margin: '0 auto',
-        padding: '10px 18px 20px',
+        padding: PAGE_PAD_CSS,
         zIndex: 2,
       }}>
         {/* El marco vive dentro del scroll (no fixed) para que se desplace con el contenido. */}
-        <div style={{ position: 'relative', zIndex: 0, margin: '-10px -18px -20px', padding: '10px 18px 20px', minHeight: 'calc(100% + 30px)', boxSizing: 'border-box' }}>
-        <div style={{ position: 'absolute', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: -1, opacity: 0.5 }} />
-        <div style={{ position: 'absolute', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: -1, opacity: 0.3 }} />
+        <div style={{ position: 'relative', zIndex: 0, margin: `-${PAGE_PAD.t}px -${PAGE_PAD.r}px -${PAGE_PAD.b}px -${PAGE_PAD.l}px`, padding: PAGE_PAD_CSS, minHeight: `calc(100% + ${PAGE_PAD.t + PAGE_PAD.b}px)`, boxSizing: 'border-box' }}>
+        <div style={{ position: 'absolute', inset: 5, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: -1, opacity: 0.5 }} />
+        <div style={{ position: 'absolute', inset: 9, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: -1, opacity: 0.3 }} />
         {children}
 
         {/* Footer dinámico */}
@@ -493,7 +499,9 @@ function PageBg({ children, showEric = false, onScroll, hideFooter = false, scro
               </div>
             )}
             <div style={{ color: C.yellow, fontFamily: F.display, fontSize: 11, letterSpacing: '1.5px', textShadow: `1px 1px 0 ${C.navy}80` }}>
-              Supported by @piantapp
+              Supported by {footerLink
+                ? <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}>@piantapp</a>
+                : '@piantapp'}
             </div>
           </div>
         )}
@@ -503,13 +511,14 @@ function PageBg({ children, showEric = false, onScroll, hideFooter = false, scro
   );
 }
 
-function Card({ children, style = {}, glow = false }) {
+function Card({ children, style = {}, glow = false, depth = 5 }) {
   return (
     <div style={{
       background: C.cream,
       border: `4px solid ${C.navy}`,
       borderRadius: 16,
-      boxShadow: `${shadow(C.navyDark, 5, 5)}${glow ? `, 0 0 20px ${C.yellow}40` : ''}`,
+      boxShadow: `${shadow(C.navyDark, depth, depth)}${glow ? `, 0 0 20px ${C.yellow}40` : ''}`,
+      marginRight: depth,
       position: 'relative',
       ...style
     }}>
@@ -519,7 +528,7 @@ function Card({ children, style = {}, glow = false }) {
   );
 }
 
-function Btn({ children, onClick, disabled, variant = 'primary', style = {}, icon: Icon }) {
+function Btn({ children, onClick, disabled, variant = 'primary', style = {}, icon: Icon, flat = false }) {
   const styles = {
     primary: {
       background: `linear-gradient(180deg, ${C.yellowBright} 0%, ${C.yellow} 50%, ${C.yellowDark} 100%)`,
@@ -541,7 +550,7 @@ function Btn({ children, onClick, disabled, variant = 'primary', style = {}, ico
   const s = styles[variant] || styles.primary;
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      width: '100%', borderRadius: 14, padding: '14px 20px',
+      width: flat ? '100%' : 'calc(100% - 4px)', marginRight: flat ? 0 : 4, borderRadius: 14, padding: '14px 20px',
       fontFamily: F.display, fontSize: 16, letterSpacing: '1px',
       cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -688,7 +697,7 @@ function RankBadge({ rank, size = 'sm' }) {
 function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules, lang, setLang, tx }) {
   const [langOpen, setLangOpen] = useState(false);
   return (
-    <PageBg showEric={true}>
+    <PageBg showEric={true} footerLink>
       <div style={{ textAlign: 'center', padding: '16px 0 28px' }}>
         <div style={{
           display: 'inline-block', background: C.navy, color: C.cream, padding: '4px 16px',
@@ -925,6 +934,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
   const [suggestionHoverIdx, setSuggestionHoverIdx] = useState(null);
   const [showSelectedList, setShowSelectedList] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const nameRowRef = useRef(null);
 
@@ -1019,7 +1029,14 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   let cardAnimIdx = 0;
 
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}>
+      {/* Header fijo al scrollear: título, botón de empezar y resumen de jugadores elegidos. */}
+      <div style={{
+        ...stickyHeaderStyle(scrolled), zIndex: 10,
+        backgroundColor: scrolled ? C.teal : 'transparent', backgroundImage: scrolled ? 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)' : 'none', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        borderRadius: scrolled ? '0 0 20px 20px' : 0,
+        boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
+      }}>
       <HeaderBar title={tx('setup_title')} onBack={handleBack} />
 
       <Btn onClick={handleTryStart} disabled={selected.length < 2} style={{ marginTop: -10, marginBottom: 8, padding: '8px 18px', fontSize: 14, gap: 6, minHeight: 44, boxSizing: 'border-box' }}>
@@ -1041,7 +1058,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, width: '100%',
           background: `${C.navy}15`, border: `2px dashed ${C.navy}80`, borderRadius: 12,
-          padding: '10px 14px', marginBottom: 10, boxSizing: 'border-box',
+          padding: '10px 14px', boxSizing: 'border-box',
         }}>
           <div style={{ width: 26, height: 26, borderRadius: 999, background: `${C.navy}25`, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, flexShrink: 0 }}>0</div>
           <div style={{ flex: 1, minWidth: 0, color: C.navy, fontFamily: F.body, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
@@ -1051,23 +1068,24 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       ) : (
         <button
           type="button"
-          onClick={() => setShowSelectedList(v => !v)}
+          onClick={() => { if (!scrolled) setShowSelectedList(v => !v); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%',
             background: C.navy, border: `3px solid ${C.cream}`, borderRadius: 12,
-            padding: '10px 14px', marginBottom: 10, cursor: 'pointer', boxSizing: 'border-box',
+            padding: '10px 14px', cursor: scrolled ? 'default' : 'pointer', boxSizing: 'border-box',
           }}
         >
           <div style={{ width: 26, height: 26, borderRadius: 999, background: C.yellow, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 12, flexShrink: 0, border: `2px solid ${C.navyDark}` }}>{selected.length}</div>
           <div style={{ flex: 1, minWidth: 0, color: C.cream, fontFamily: F.body, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
             {selected.map(formatDisplayName).join(' · ')}
           </div>
-          {showSelectedList ? <ChevronUp size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} /> : <ChevronDown size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} />}
+          {!scrolled && (showSelectedList ? <ChevronUp size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} /> : <ChevronDown size={18} strokeWidth={2.5} color={C.cream} style={{ flexShrink: 0 }} />)}
         </button>
       )}
+      </div>
 
       {selected.length > 0 && showSelectedList && (
-      <Card style={{ padding: 8, marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
+      <Card depth={2} style={{ padding: 8, marginBottom: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {selected.map((p, i) => (
               <div key={p} style={{
@@ -1084,7 +1102,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
       </Card>
       )}
 
-      <Card style={{ padding: '10px 12px', marginBottom: 10, boxShadow: shadow(C.navyDark, 2, 2) }}>
+      <Card depth={2} style={{ padding: '10px 12px', marginBottom: 10 }}>
         <div ref={nameRowRef} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0, zIndex: showSavedSuggestions ? 70 : 1 }}>
             <Search size={16} strokeWidth={2.5} color={C.inkSoft} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
@@ -1183,6 +1201,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
               borderRadius: 10,
               cursor: 'pointer',
               boxShadow: shadowSm(),
+              marginRight: 3,
               color: C.navy,
               display: 'flex',
               alignItems: 'center',
@@ -1199,9 +1218,9 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
           type="button"
           onClick={() => { setSelected([...lastGame.players].sort(byName)); setShowSelectedList(true); }}
           style={{
-            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 10, width: 'calc(100% - 3px)', textAlign: 'left', cursor: 'pointer',
             background: C.cream, border: `3px solid ${C.navy}`, borderRadius: 12,
-            padding: '10px 14px', marginBottom: 12, boxShadow: shadowSm(),
+            padding: '10px 14px', marginBottom: 12, marginRight: 3, boxShadow: shadowSm(),
           }}
         >
           <div style={{
@@ -1379,10 +1398,8 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer,
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        ...stickyHeaderStyle(scrolled), zIndex: 10,
+        backgroundColor: scrolled ? C.teal : 'transparent', backgroundImage: scrolled ? 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)' : 'none', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -1520,7 +1537,7 @@ function RulesSection({ icon: Icon, title, children }) {
         }}><Icon size={16} color={C.navy} strokeWidth={2.5} /></div>
         <div style={{ fontFamily: F.display, fontSize: 14, color: C.navy, letterSpacing: '1px' }}>{title}</div>
       </div>
-      <div style={{ fontFamily: F.body, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55 }}>
+      <div style={{ fontFamily: F.body, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, whiteSpace: 'pre-line' }}>
         {typeof children === 'string' ? renderBold(children) : children}
       </div>
     </Card>
@@ -1533,7 +1550,7 @@ function RulesActionCard({ color, title, children }) {
       <div style={{ width: 4, borderRadius: 4, background: color, flexShrink: 0 }} />
       <div>
         <div style={{ fontFamily: F.display, fontSize: 11.5, color: C.navy, letterSpacing: '0.5px', marginBottom: 2 }}>{title}</div>
-        <div>{children}</div>
+        <div>{typeof children === 'string' ? renderBold(children) : children}</div>
       </div>
     </div>
   );
@@ -1553,10 +1570,8 @@ function RulesScreen({ onBack, tx, fromGame = false }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        ...stickyHeaderStyle(scrolled), zIndex: 10,
+        backgroundColor: scrolled ? C.teal : 'transparent', backgroundImage: scrolled ? 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)' : 'none', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -1571,7 +1586,7 @@ function RulesScreen({ onBack, tx, fromGame = false }) {
             <button type="button" onClick={onBack} style={{
               background: C.yellow, border: `3px solid ${C.navy}`, borderRadius: 12,
               padding: '9px 16px', fontFamily: F.display, fontSize: 12, letterSpacing: '1px',
-              color: C.navy, cursor: 'pointer', boxShadow: shadowSm(), flexShrink: 0, whiteSpace: 'nowrap',
+              color: C.navy, cursor: 'pointer', boxShadow: shadowSm(), marginRight: 3, flexShrink: 0, whiteSpace: 'nowrap',
             }}>{tx('rules_back_to_game')}</button>
           </div>
         ) : (
@@ -1600,7 +1615,7 @@ function RulesScreen({ onBack, tx, fromGame = false }) {
           {tx('rules_scoring_body').split(/\s*\d\)\s*/).filter(Boolean).map((step, i) => (
             <li key={i} style={{ display: 'flex', gap: 8 }}>
               <span style={{ flexShrink: 0, minWidth: 14, fontWeight: 700, color: C.navy }}>{i + 1}.</span>
-              <span>{step}</span>
+              <span>{renderBold(step)}</span>
             </li>
           ))}
         </ol>
@@ -1885,7 +1900,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   return (
     <PageBg showEric={false} hideFooter={activeScoreIdx !== null} scrollRef={scrollContainerRef}>
-      <div style={{ paddingTop: 24 }}>
+      <div style={{ paddingTop: 14 }}>
       <div ref={headerRef} style={keypadDimStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
         <button
@@ -1911,7 +1926,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             onClick={() => setModal('options')}
             aria-label={tx('game_options')}
             className="hdrBtn"
-            style={headerActionBtn}
+            style={{ ...headerActionBtn, marginRight: 3 }}
           >
             <Settings size={24} strokeWidth={2.5} color={C.navy} />
           </button>
@@ -1922,7 +1937,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
       <div ref={contentRef} style={{
         background: C.cream, border: `3px solid ${C.navy}`, borderRadius: 20,
-        boxShadow: shadow(C.navyDark, 5, 5), padding: '6px 8px', position: 'relative', zIndex: 1
+        boxShadow: shadow(C.navyDark, 5, 5), marginRight: 5, padding: '6px 8px', position: 'relative', zIndex: 1
       }}>
 
       <form onSubmit={handleScoresFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2021,6 +2036,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           <Btn
             onClick={handleCloseRound}
             disabled
+            flat
             icon={Zap}
             style={{ padding: '12px 8px', gap: 6, background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none', fontSize: 'clamp(10px, 3.3vw, 15px)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
           >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
@@ -2077,7 +2093,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
             borderRadius: 18,
             background: 'linear-gradient(135deg, #FF7A1A 0%, #FF3B86 55%, #8B2AC8 100%)',
             border: `4px solid ${C.navyDark}`,
-            boxShadow: `${shadow(C.navyDark, 6, 6)}, 0 0 30px rgba(255, 122, 26, 0.45)`,
+            boxShadow: `${shadow(C.navyDark, 6, 6)}, 0 0 30px rgba(255, 122, 26, 0.45)`, marginRight: 6,
             padding: 24,
             color: C.white,
             position: 'relative',
@@ -2102,7 +2118,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               {spicyAlert.message}
             </div>
             <button onClick={() => setSpicyAlert(null)} style={{
-              width: '100%', padding: '12px 16px',
+              width: 'calc(100% - 3px)', marginRight: 3, padding: '12px 16px',
               background: C.yellow, color: C.navyDark,
               border: `3px solid ${C.navyDark}`, borderRadius: 12,
               fontFamily: F.display, fontSize: 15, letterSpacing: '1.5px',
@@ -2159,6 +2175,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           })() : (
             <Btn
               disabled
+              flat
               style={{ marginBottom: 10, padding: '10px 8px', fontSize: 14, whiteSpace: 'nowrap', background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none' }}
             >{tx('game_opt_target')}</Btn>
           )}
@@ -2531,8 +2548,8 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
         <>
           <div onClick={closeScoreKeypad} style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 89 }} />
           <div ref={keypadPanelRef} style={{
-            position: 'fixed', left: '50%', bottom: 0, transform: 'translateX(-50%)',
-            width: 'calc(100% - 36px)', maxWidth: 424, boxSizing: 'border-box', zIndex: 90,
+            position: 'fixed', left: 'calc(50% - 2.5px)', bottom: 0, transform: 'translateX(-50%)',
+            width: `calc(100% - ${PAGE_PAD.l + PAGE_PAD.r + 5}px)`, maxWidth: 460 - PAGE_PAD.l - PAGE_PAD.r - 5, boxSizing: 'border-box', zIndex: 90,
             boxShadow: `5px 0 0 ${C.navyDark}`,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0, marginBottom: -3, position: 'relative', zIndex: 2 }}>
@@ -2693,7 +2710,7 @@ function GameOverScreen({ game, onHome, onRematchSame, onRematchEdit, tx }) {
   }, []);
 
   return (
-    <PageBg showEric={false}>
+    <PageBg showEric={false} footerLink>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <div style={{ display: 'inline-block', background: C.yellow, border: `4px solid ${C.navy}`, borderRadius: 999, padding: 18, boxShadow: `${shadow()}, 0 0 30px ${C.yellow}50` }}><Trophy size={44} color={C.navy} fill={C.navy} /></div>
         <div style={{ fontFamily: F.display, fontSize: 42, color: C.yellow, marginTop: 16, textShadow: `4px 4px 0 ${C.navyDark}` }}>{game.winner.toUpperCase()}</div>
@@ -2828,7 +2845,7 @@ function EditPlayersOverlay({ initialPlayers, data, onSavePlayer, onConfirm, onC
               </div>
             )}
           </div>
-          <button type="button" onClick={addNew} style={{ flexShrink: 0, height: 44, minHeight: 44, minWidth: 48, boxSizing: 'border-box', padding: '0 12px', background: C.yellow, border: '3px solid #000080', borderRadius: 10, cursor: 'pointer', boxShadow: shadowSm(), color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button type="button" onClick={addNew} style={{ flexShrink: 0, height: 44, minHeight: 44, minWidth: 48, boxSizing: 'border-box', padding: '0 12px', background: C.yellow, border: '3px solid #000080', borderRadius: 10, cursor: 'pointer', boxShadow: shadowSm(), marginRight: 3, color: C.navy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Plus size={22} strokeWidth={3} />
           </button>
         </div>
@@ -2914,7 +2931,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   if (qq) {
     matchSuggestions = players
       .map(p => p.name)
-      .filter(nm => !selectedNames.includes(nm) && foldForMatch(nm).includes(qq))
+      .filter(nm => !selectedNames.includes(nm) && foldForMatch(nm).startsWith(qq))
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
       .slice(0, 12);
   }
@@ -2930,10 +2947,8 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 60,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        ...stickyHeaderStyle(scrolled), zIndex: 60,
+        backgroundColor: scrolled ? C.teal : 'transparent', backgroundImage: scrolled ? 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)' : 'none', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -3029,29 +3044,18 @@ function RankingsScreen({ data, onBack, tx, lang }) {
           <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px', borderBottom: i < filtered.length - 1 ? `1.5px dashed ${C.navy}12` : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <RankBadge rank={i + 1} />
-              <div>
-                <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy }}>{formatDisplayName(p.name)}</div>
-                {tab !== 'eff' && (
-                  <div style={{ fontFamily: F.body, fontSize: 10, lineHeight: 1.25 }}>{formatGamesWinsLine(p, lang)}</div>
-                )}
-              </div>
+              <div style={{ fontFamily: F.display, fontSize: 13, color: C.navy, textAlign: 'left', minWidth: 0 }}>{formatDisplayName(p.name)}</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              {tab === 'eff' ? (
-                <>
-                  <div style={{ fontFamily: F.display, fontSize: 17, color: p.gamesPlayed ? C.navy : C.inkSoft }}>
-                    {p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : tx('rk_na')}
-                  </div>
-                  <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, marginTop: 2, lineHeight: 1.2 }}>
-                    {formatWinsGamesEff(p.wins, p.gamesPlayed, lang)}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontFamily: F.display, fontSize: 17, color: i === 0 && at.value(p) > 0 ? C.red : C.navy }}>{at.value(p)}</div>
-                  {at.suf && <div style={{ fontFamily: F.display, fontSize: 7, color: C.inkSoft }}>{at.suf.toUpperCase()}</div>}
-                </>
-              )}
+            {/* Mismo formato en todas las pestañas: valor grande a la derecha y debajo ganadas · partidas. */}
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontFamily: F.display, fontSize: 17, color: tab === 'eff' && !p.gamesPlayed ? C.inkSoft : C.navy }}>
+                {tab === 'eff'
+                  ? (p.gamesPlayed ? `${Math.round(efficaciaPct(p))}%` : tx('rk_na'))
+                  : <>{at.value(p)}{at.suf && <span style={{ fontSize: 9, color: C.inkSoft, marginLeft: 3 }}>{at.suf.toUpperCase()}</span>}</>}
+              </div>
+              <div style={{ fontFamily: F.display, fontSize: 9, color: C.inkSoft, marginTop: 2, lineHeight: 1.2 }}>
+                {formatWinsGamesEff(p.wins, p.gamesPlayed, lang)}
+              </div>
             </div>
           </div>
         ))}
@@ -3064,6 +3068,14 @@ function RankingsScreen({ data, onBack, tx, lang }) {
 function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   const allGames = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
+  // Borrado en dos pasos; solo el primero tiene 2s de espera antes de habilitar el botón.
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [deleteCountdown, setDeleteCountdown] = useState(0);
+  useEffect(() => {
+    if (deleteCountdown <= 0) return;
+    const t = setTimeout(() => setDeleteCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [deleteCountdown]);
   const [scrolled, setScrolled] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPlayers, setFilterPlayers] = useState([]);
@@ -3123,10 +3135,8 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
   return (
     <PageBg showEric={false} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > engageRef.current)}>
       <div ref={headerRef} style={{
-        position: 'sticky', top: scrolled ? -10 : -2, zIndex: 10,
-        margin: scrolled ? '-10px -18px 0' : '-2px -10px 0',
-        padding: scrolled ? '10px 18px 10px' : '2px 10px 6px',
-        backgroundColor: C.teal, backgroundImage: 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
+        ...stickyHeaderStyle(scrolled), zIndex: 10,
+        backgroundColor: scrolled ? C.teal : 'transparent', backgroundImage: scrolled ? 'radial-gradient(rgba(90,166,168,0.15) 1px, transparent 1px)' : 'none', backgroundSize: '16px 16px', backgroundAttachment: 'fixed',
         borderRadius: scrolled ? '0 0 20px 20px' : 0,
         boxShadow: scrolled ? `0 3px 6px ${C.navyDark}30` : 'none',
       }}>
@@ -3138,7 +3148,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
             style={{
               flexShrink: 0, width: 42, height: 42, borderRadius: 12,
               background: filterOpen || filterPlayers.length > 0 ? C.yellow : C.cream,
-              border: `3px solid ${C.navy}`, boxShadow: shadowSm(),
+              border: `3px solid ${C.navy}`, boxShadow: shadowSm(), marginRight: 3,
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.navy,
             }}
           ><Search size={18} strokeWidth={3} /></button>
@@ -3237,7 +3247,7 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
             <Card key={g.id} style={{ padding: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 11, fontFamily: F.body, color: C.inkSoft }}>{fmtDate(g.date, lang)}</span></div>
-                <button onClick={() => setConfirmDelete(g)} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
+                <button onClick={() => { setDeleteStep(1); setDeleteCountdown(2); setConfirmDelete(g); }} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
               </div>
               {r.map((p, i) => (
                 <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1px 0', gap: 6 }}>
@@ -3254,10 +3264,26 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
       </div>
       {confirmDelete && (
         <Overlay><Card style={{ padding: 20, maxWidth: 320, width: '100%' }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, color: C.navy, marginBottom: 10 }}>{tx('hist_del')}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <AlertTriangle color={C.red} size={22} />
+            <div style={{ fontFamily: F.display, fontSize: 16, color: deleteStep === 2 ? C.red : C.navy, textAlign: 'left' }}>{tx(deleteStep === 2 ? 'setup_delete_final_title' : 'hist_del')}</div>
+          </div>
+          {deleteStep === 2 && (
+            <div style={{ fontFamily: F.body, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14, textAlign: 'left' }}>{tx('hist_del_final_body')}</div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={() => setConfirmDelete(null)} variant="secondary">{tx('setup_cancel')}</Btn>
-            <Btn onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }} variant="danger">{tx('setup_delete')}</Btn>
+            <Btn onClick={() => setConfirmDelete(null)} variant="secondary" style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14 }}>{tx('setup_cancel')}</Btn>
+            <Btn
+              onClick={() => {
+                if (deleteStep === 1) { setDeleteStep(2); return; }
+                onDelete(confirmDelete.id); setConfirmDelete(null);
+              }}
+              variant="danger"
+              disabled={deleteCountdown > 0}
+              style={{ flex: 1, minWidth: 0, padding: '14px 8px', fontSize: 14, whiteSpace: 'nowrap' }}
+            >
+              {tx(deleteStep === 2 ? 'hist_del_final_btn' : 'setup_delete')}{deleteCountdown > 0 ? ` (${deleteCountdown})` : ''}
+            </Btn>
           </div>
         </Card></Overlay>
       )}
