@@ -463,8 +463,6 @@ function formatWinsGamesEff(wins, gamesPlayed, lang) {
 function PageBg({ children, showEric = false, onScroll, hideFooter = false, scrollRef }) {
   return (
     <div style={{ height: '100dvh', minHeight: '100dvh', background: C.teal, fontFamily: F.body, color: C.ink, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'fixed', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: 1, opacity: 0.5 }} />
-      <div style={{ position: 'fixed', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: 1, opacity: 0.3 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: `radial-gradient(${C.tealDark} 1px, transparent 1px)`, backgroundSize: '16px 16px', opacity: 0.15, pointerEvents: 'none' }} />
       <div ref={scrollRef} onScroll={onScroll} style={{
         position: 'relative',
@@ -480,6 +478,10 @@ function PageBg({ children, showEric = false, onScroll, hideFooter = false, scro
         padding: '10px 18px 20px',
         zIndex: 2,
       }}>
+        {/* El marco vive dentro del scroll (no fixed) para que se desplace con el contenido. */}
+        <div style={{ position: 'relative', zIndex: 0, margin: '-10px -18px -20px', padding: '10px 18px 20px', minHeight: 'calc(100% + 30px)', boxSizing: 'border-box' }}>
+        <div style={{ position: 'absolute', inset: 8, border: `4px solid ${C.yellowDark}`, borderRadius: 20, pointerEvents: 'none', zIndex: -1, opacity: 0.5 }} />
+        <div style={{ position: 'absolute', inset: 12, border: `2px solid ${C.navy}30`, borderRadius: 16, pointerEvents: 'none', zIndex: -1, opacity: 0.3 }} />
         {children}
 
         {/* Footer dinámico */}
@@ -495,6 +497,7 @@ function PageBg({ children, showEric = false, onScroll, hideFooter = false, scro
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
