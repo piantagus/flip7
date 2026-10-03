@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical, Delete, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
-import { Tx } from './i18n.js';
+import { Tx, SPICY } from './i18n.js';
 
 const SUPABASE_URL = 'https://bztyusclkfsydrrbpdey.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6dHl1c2Nsa2ZzeWRycmJwZGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Mzk1NjEsImV4cCI6MjA5MzUxNTU2MX0.on73TbG44Xqsu6D6FEtgUaILhKikdZlCO9kExqHBl8g';
@@ -370,40 +370,41 @@ function resolveEndGame(totals, players, target, tiebreak) {
   return { type: 'win', winner: leaders[0] };
 }
 
-/** Cuenta cuántas rondas consecutivas con 0 puntos lleva ese jugador desde la última hacia atrás. */
-function trailingZeroStreakRounds(rounds, playerName) {
-  let n = 0;
-  for (let i = rounds.length - 1; i >= 0; i--) {
-    const s = rounds[i]?.scores?.[playerName] ?? 0;
-    if (s !== 0) break;
-    n++;
+/**
+ * Ceros de un jugador contando solo las rondas que jugó (se ignoran las rondas donde figura en
+ * `absent`: anteriores a sumarse a la partida o desempates en los que no participó).
+ * `consecutive` = ceros seguidos desde la última ronda jugada hacia atrás; `total` = ceros en la partida.
+ */
+function zeroStats(rounds, playerName) {
+  const played = (rounds ?? []).filter(r => !(r.absent ?? []).includes(playerName));
+  let consecutive = 0;
+  for (let i = played.length - 1; i >= 0; i--) {
+    if ((played[i]?.scores?.[playerName] ?? 0) !== 0) break;
+    consecutive++;
   }
-  return n;
+  const total = played.filter(r => (r.scores?.[playerName] ?? 0) === 0).length;
+  return { consecutive, total };
 }
 
-// "Alertas Picantes": frases irónicas para 3 rondas seguidas en cero.
-const SPICY_PHRASES_SINGLE = [
-  '¿{name}, estás jugando al Flip 7 o contando moscas?',
-  '¡Alguien que le explique las reglas a {name}!',
-  '{name}, tres ceros seguidos... ¿Estás bien?',
-  '{name}, la baraja no es la enemiga. ¿O sí?',
-  '{name}: 3 rondas, 0 puntos. La constancia importa, eh.',
-];
+/**
+ * "Alertas Picantes": qué lista de frases le toca a un jugador que acaba de hacer 0.
+ * 4+ ceros seguidos → 'hot'; 3 seguidos o 4+ en la partida → 'all'; si no, null.
+ */
+function spicyTierForZero(consecutive, total) {
+  if (consecutive >= 4) return 'hot';
+  if (consecutive === 3 || total >= 4) return 'all';
+  return null;
+}
 
-const SPICY_PHRASES_MULTI = [
-  '¿Seguro que saben jugar, chicos?',
-  'Tres ceros seguidos cada uno. {names}, ¿están jugando o de visita?',
-  '{names}: equipo "todavía no me cae la ficha".',
-  'Si esto fuera una clase de Flip 7, hoy aplazan: {names}.',
-];
+let lastSpicyPhrase = null;
 
-function pickSpicyMessage(players) {
-  if (!players?.length) return '';
-  const arr = players.length === 1 ? SPICY_PHRASES_SINGLE : SPICY_PHRASES_MULTI;
-  const tpl = arr[Math.floor(Math.random() * arr.length)];
-  return tpl
-    .split('{name}').join(players[0] ?? '')
-    .split('{names}').join(players.join(' · '));
+/** Frase al azar de la lista, sin repetir la última mostrada ni las ya usadas en esta alerta. */
+function pickSpicyPhrase(list, used = []) {
+  let options = list.filter(f => f !== lastSpicyPhrase && !used.includes(f));
+  if (options.length === 0) options = list;
+  const phrase = options[Math.floor(Math.random() * options.length)];
+  lastSpicyPhrase = phrase;
+  return phrase;
 }
 
 /** Lowercase + strip accents so typed text matches saved names with the same letters. */
@@ -705,10 +706,20 @@ function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules
           border: `2px solid ${C.yellow}`, marginBottom: 12
         }}>THE COMPANION FOR</div>
 
-        <div style={{ position: 'relative', display: 'inline-block', margin: '8px 0' }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%) rotate(-6deg)', width: 60, height: 80, background: C.red, borderRadius: 8, opacity: 0.6 }} />
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-42%) rotate(-12deg)', width: 50, height: 70, background: C.blueLight, borderRadius: 8, opacity: 0.4 }} />
-          <div style={{ position: 'absolute', top: -8, right: '50%', transform: 'translateX(42%) rotate(12deg)', width: 50, height: 70, background: C.green, borderRadius: 8, opacity: 0.4 }} />
+        <div style={{ position: 'relative', display: 'inline-block', margin: '36px 0 8px' }}>
+          {/* Abanico de 3 cartas detrás del logo */}
+          {[
+            { rot: -20, dx: -42, dy: 10, bg: C.blueLight },
+            { rot: 20, dx: 42, dy: 10, bg: C.green },
+            { rot: 0, dx: 0, dy: 0, bg: C.red },
+          ].map(({ rot, dx, dy, bg }) => (
+            <div key={rot} style={{
+              position: 'absolute', top: -40, left: '50%', width: 62, height: 90, marginLeft: -31,
+              transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`,
+              background: bg, border: `3px solid ${C.navy}`, borderRadius: 9, boxSizing: 'border-box',
+              boxShadow: `inset 0 0 0 3px ${C.creamLight}, 2px 2px 0 ${C.navyDark}60`,
+            }} />
+          ))}
 
           <div style={{
             position: 'relative',
@@ -1719,11 +1730,21 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
 
   const maybeOpenSpicyAlert = (g) => {
     if (!g?.rounds?.length || !g.players?.length) return;
-    const offenders = g.players.filter(p => trailingZeroStreakRounds(g.rounds, p) >= 3);
-    if (offenders.length === 0) return;
-    if (Math.random() < 0.5) {
-      setSpicyAlert({ players: offenders, message: pickSpicyMessage(offenders.map(formatDisplayName)) });
+    const last = g.rounds[g.rounds.length - 1];
+    const phrases = SPICY[lang] ?? SPICY.es;
+    const items = [];
+    for (const p of g.players) {
+      // Solo quien jugó la ronda recién cerrada y sacó 0.
+      if ((last.absent ?? []).includes(p) || (last.scores?.[p] ?? 0) !== 0) continue;
+      const { consecutive, total } = zeroStats(g.rounds, p);
+      const tier = spicyTierForZero(consecutive, total);
+      if (!tier) continue;
+      // Con racha (3+ seguidos) sale siempre; por ceros sueltos acumulados (4+ en la partida), la mitad de las veces.
+      if (consecutive < 3 && Math.random() >= 0.5) continue;
+      const list = tier === 'hot' ? phrases.hot : [...phrases.soft, ...phrases.hot];
+      items.push({ name: p, phrase: pickSpicyPhrase(list, items.map(it => it.phrase)) });
     }
+    if (items.length > 0) setSpicyAlert({ items });
   };
 
   const applyCloseRoundResult = (result) => {
@@ -1899,7 +1920,7 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
   };
 
   return (
-    <PageBg showEric={false} hideFooter={activeScoreIdx !== null} scrollRef={scrollContainerRef}>
+    <PageBg showEric={false} hideFooter scrollRef={scrollContainerRef}>
       <div style={{ paddingTop: 14 }}>
       <div ref={headerRef} style={keypadDimStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 8 }}>
@@ -2031,20 +2052,33 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
           );
         })}
       </form>
-      <div style={{ marginTop: 12, ...keypadDimStyle }}>
-        {missingScoreCount > 0 ? (
-          <Btn
-            onClick={handleCloseRound}
-            disabled
-            flat
-            icon={Zap}
-            style={{ padding: '12px 8px', gap: 6, background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none', fontSize: 'clamp(10px, 3.3vw, 15px)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
-          >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
-        ) : (
-          <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')} {String(roundNum).padStart(2, '0')}</Btn>
-        )}
       </div>
-      </div>
+
+      {/* Lugar para que la última fila pueda scrollear por encima del botón flotante. */}
+      <div style={{ height: 84 }} />
+
+      {/* Botón de cerrar ronda: flota abajo, fuera de la tarjeta. Se oculta con el teclado abierto. */}
+      {activeScoreIdx === null && (
+        <div style={{
+          position: 'fixed', left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+          bottom: 'calc(20px + env(safe-area-inset-bottom))',
+          width: `calc(100% - ${PAGE_PAD.l + PAGE_PAD.r}px)`, maxWidth: 460 - PAGE_PAD.l - PAGE_PAD.r, boxSizing: 'border-box',
+        }}>
+          <div style={{ background: missingScoreCount > 0 ? C.cream : 'transparent', borderRadius: 14 }}>
+          {missingScoreCount > 0 ? (
+            <Btn
+              onClick={handleCloseRound}
+              disabled
+              flat
+              icon={Zap}
+              style={{ padding: '12px 8px', gap: 6, background: 'transparent', boxShadow: 'none', border: `4px dashed ${C.navy}66`, color: C.navy, opacity: 0.75, textShadow: 'none', fontSize: 'clamp(10px, 3.3vw, 15px)', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
+            >{missingScoreCount === 1 ? tx('game_missing_one') : tx('game_missing_many', { n: missingScoreCount })}</Btn>
+          ) : (
+            <Btn onClick={handleCloseRound} icon={Zap} style={{ padding: '10px' }}>{tx('game_add_round')} {String(roundNum).padStart(2, '0')}</Btn>
+          )}
+          </div>
+        </div>
+      )}
 
       <div ref={keypadSpacerRef} style={{ height: 0 }} />
 
@@ -2111,11 +2145,16 @@ function GameScreen({ game, scores, setScores, onCloseRound, onAbandon, onChange
               <span style={{ fontSize: 26 }}>🌶️</span>
               ¡ALERTA PICANTE!
             </div>
-            <div style={{
-              fontFamily: F.body, fontSize: 16, lineHeight: 1.45, fontWeight: 700,
-              textShadow: '1px 1px 0 rgba(0,0,0,0.35)', marginBottom: 20, position: 'relative'
-            }}>
-              {spicyAlert.message}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20, position: 'relative' }}>
+              {spicyAlert.items.map(({ name, phrase }) => (
+                <div key={name} style={{
+                  background: C.creamLight, border: `3px solid ${C.navyDark}`, borderRadius: 12,
+                  padding: '10px 12px', textAlign: 'left',
+                }}>
+                  <div style={{ fontFamily: F.body, fontSize: 16, fontWeight: 800, color: C.red, marginBottom: 2 }}>{formatDisplayName(name)}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 15, lineHeight: 1.4, fontWeight: 600, color: C.navy }}>{phrase}</div>
+                </div>
+              ))}
             </div>
             <button onClick={() => setSpicyAlert(null)} style={{
               width: 'calc(100% - 3px)', marginRight: 3, padding: '12px 16px',
@@ -3390,15 +3429,17 @@ export default function App() {
 
   const closeRound = async () => {
     const rs = {};
+    const absent = []; // no juegan esta ronda (desempate solo entre empatados)
     for (const p of game.players) {
       if (game.tiebreak?.mode === 'tied_only' && !(game.tiebreak?.players ?? []).includes(p)) {
         rs[p] = 0;
+        absent.push(p);
       } else {
         rs[p] = parseInt(scores[p], 10) || 0;
       }
     }
     const nt = { ...game.totals }; for (const p of game.players) nt[p] += rs[p];
-    const nr = [...game.rounds, { scores: rs }]; const t = game.targetScore;
+    const nr = [...game.rounds, absent.length > 0 ? { scores: rs, absent } : { scores: rs }]; const t = game.targetScore;
     const gameAfter = { ...game, rounds: nr, totals: nt };
     const outcome = resolveEndGame(nt, game.players, t, game.tiebreak);
 
@@ -3496,7 +3537,7 @@ export default function App() {
 
   const changeTarget = (t) => { if (game) setGame({ ...game, targetScore: t }); };
   const resetGame = () => { if (game) { setGame({ ...game, rounds: [], totals: Object.fromEntries(game.players.map(p => [p, 0])), tiebreak: undefined }); setScores(Object.fromEntries(game.players.map(p => [p, '']))); } };
-  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 } })) }); setScores({ ...scores, [name]: '' }); } };
+  const addPlayerMidGame = (name, pts) => { if (game && !game.players.includes(name)) { setGame({ ...game, players: [...game.players, name], totals: { ...game.totals, [name]: pts }, rounds: game.rounds.map(r => ({ ...r, scores: { ...r.scores, [name]: 0 }, absent: [...(r.absent ?? []), name] })) }); setScores({ ...scores, [name]: '' }); } };
   const modifyRound = (idx, newScores) => {
     if (!game) return;
     const ur = game.rounds.map((r, i) => i === idx ? { ...r, scores: newScores } : r);
