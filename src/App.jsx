@@ -1242,16 +1242,18 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
 
       {selected.length > 0 && showSelectedList && (
       <Card depth={2} style={{ padding: 8, marginBottom: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {selected.map((p, i) => (
+          {/* Chips de dos por línea, cada uno con su X para quitarlo. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 5 }}>
+            {selected.map((p) => (
               <div key={p} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: C.creamLight, padding: '4px 6px', borderRadius: 8,
-                border: `1px solid ${C.navy}18`,
+                display: 'flex', alignItems: 'center', gap: 4, minWidth: 0,
+                background: C.creamLight, padding: '1px 3px', borderRadius: 999,
+                border: `2px solid ${C.navy}`,
               }}>
-                <div style={{ width: 16, height: 16, borderRadius: 999, background: C.navy, color: C.yellow, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F.display, fontSize: 8, flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
-                <button type="button" onClick={() => remove(p)} style={{ background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', display: 'flex', padding: 1, flexShrink: 0 }}><X size={12} strokeWidth={3} /></button>
+                {/* Mismo ancho que la X, para que el nombre quede centrado en el chip. */}
+                <div style={{ width: 20, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0, fontFamily: F.body, fontWeight: 700, fontSize: 12, color: C.navy, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDisplayName(p)}</div>
+                <button type="button" onClick={() => remove(p)} aria-label={`${tx('setup_delete')} ${formatDisplayName(p)}`} style={{ background: 'transparent', border: 'none', color: C.red, cursor: 'pointer', display: 'flex', padding: 4, flexShrink: 0 }}><X size={12} strokeWidth={3} /></button>
               </div>
             ))}
           </div>
