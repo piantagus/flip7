@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
-import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical, Delete, BookOpen } from 'lucide-react';
+import { Trophy, Plus, X, ArrowLeft, Crown, Users, Target, BarChart3, RotateCcw, AlertTriangle, Zap, TrendingUp, History, Trash2, Calendar, Settings, UserPlus, Edit3, ChevronRight, ChevronDown, ChevronUp, Check, Search, Percent, Languages, Calculator, MoreVertical, Delete, BookOpen, Lock, User, ShieldCheck, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { Tx, SPICY } from './i18n.js';
@@ -131,7 +131,8 @@ async function loadSavedPlayerNames() {
 async function savePlayerName(name) {
   const trimmed = name?.trim();
   if (!trimmed) return;
-  const { error } = await supabase.from('players').upsert({ name: trimmed }, { onConflict: 'name' });
+  // ignoreDuplicates: si ya existe no hace UPDATE (que requiere usuario ingresado), solo lo deja como está.
+  const { error } = await supabase.from('players').upsert({ name: trimmed }, { onConflict: 'name', ignoreDuplicates: true });
   if (error) console.error('No se pudo guardar jugador en Supabase:', error);
 }
 
@@ -177,9 +178,10 @@ async function insertGame(game) {
 
 async function removeGame(id) {
   if (!id) return false;
-  const { error } = await supabase.from('games').delete().eq('id', id);
-  if (error) {
-    console.error('No se pudo borrar partida en Supabase:', error);
+  // .select() para saber si realmente se borró: sin permiso, Supabase no da error pero borra 0 filas.
+  const { data: deleted, error } = await supabase.from('games').delete().eq('id', id).select('id');
+  if (error || !deleted?.length) {
+    console.error('No se pudo borrar partida en Supabase:', error ?? 'sin permiso o no existe');
     return false;
   }
   return true;
@@ -693,13 +695,161 @@ function RankBadge({ rank, size = 'sm' }) {
   );
 }
 
+/** Nombre a mostrar del usuario ingresado: el nombre de jugador que cargó, o la parte local del mail. */
+function authDisplayName(session) {
+  const name = session?.user?.user_metadata?.name?.trim();
+  return name ? formatDisplayName(name) : (session?.user?.email ?? '').split('@')[0];
+}
+
+/** Ingreso con código por mail (Supabase Auth). Con sesión activa muestra la cuenta y "Salir". */
+function AuthOverlay({ session, onClose, tx, playerNames = [] }) {
+  const [step, setStep] = useState('email');
+  const [email, setEmail] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const inputStyle = {
+    width: '100%', height: 46, boxSizing: 'border-box', marginBottom: 12,
+    background: C.creamLight, border: `3px solid ${C.navy}`, borderRadius: 10,
+    padding: '0 12px', fontFamily: F.body, fontSize: 16, color: C.ink, outline: 'none',
+  };
+  const titleStyle = { fontFamily: F.display, fontSize: 16, color: C.navy, textAlign: 'left' };
+  const bodyStyle = { fontFamily: F.body, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 14, textAlign: 'left' };
+  const linkStyle = { width: '100%', background: 'transparent', border: 'none', color: C.inkSoft, fontFamily: F.body, fontSize: 13, fontWeight: 600, padding: '6px 0', cursor: 'pointer' };
+
+  const cleanEmail = email.trim().toLowerCase();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
+  // El nombre de jugador se elige de los guardados: así coincide con el de las partidas.
+  const nameQuery = foldForMatch(playerName.trim().replace(/\s+/g, ' '));
+  const cleanName = playerNames.find(n => foldForMatch(n) === nameQuery) ?? '';
+  const nameSuggestions = nameQuery && !cleanName
+    ? playerNames.filter(n => foldForMatch(n).startsWith(nameQuery)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).slice(0, 5)
+    : [];
+  const formOk = emailOk && cleanName.length > 0;
+
+  const sendCode = async () => {
+    if (!formOk || busy) return;
+    setBusy(true); setError(null);
+    const { error: err } = await supabase.auth.signInWithOtp({ email: cleanEmail, options: { shouldCreateUser: true, data: { name: cleanName } } });
+    setBusy(false);
+    if (err) { setError(tx('auth_err_send')); return; }
+    setCode(''); setStep('code');
+  };
+
+  const verifyCode = async () => {
+    if (code.length < 6 || busy) return;
+    setBusy(true); setError(null);
+    const { error: err } = await supabase.auth.verifyOtp({ email: cleanEmail, token: code, type: 'email' });
+    setBusy(false);
+    if (err) { setError(tx('auth_err_code')); return; }
+    // `data` del paso anterior solo se guarda al crear el usuario; si ya existía, se actualiza acá.
+    await supabase.auth.updateUser({ data: { name: cleanName } });
+    onClose();
+  };
+
+  const signOut = async () => {
+    setBusy(true);
+    await supabase.auth.signOut();
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <Overlay><Card style={{ padding: 20, maxWidth: 340, width: '100%' }}>
+      {session ? (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <ShieldCheck size={22} color={C.navy} strokeWidth={2.5} />
+            <div style={titleStyle}>{tx('auth_account_h')}</div>
+          </div>
+          <div style={{ fontFamily: F.display, fontSize: 18, color: C.navy, textAlign: 'left', marginBottom: 2 }}>{authDisplayName(session)}</div>
+          <div style={{ ...bodyStyle, marginBottom: 8, wordBreak: 'break-all' }}>{session.user?.email}</div>
+          <div style={bodyStyle}>{tx('auth_account_body')}</div>
+          <Btn onClick={signOut} disabled={busy} variant="danger" icon={LogOut} style={{ marginBottom: 10, fontSize: 14, padding: '12px 10px' }}>{tx('auth_sign_out')}</Btn>
+          <Btn onClick={onClose} variant="secondary" style={{ fontSize: 14, padding: '12px 10px' }}>{tx('game_close')}</Btn>
+        </>
+      ) : step === 'email' ? (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <User size={22} color={C.navy} strokeWidth={2.5} />
+            <div style={titleStyle}>{tx('auth_h')}</div>
+          </div>
+          <div style={bodyStyle}>{tx('auth_email_body')}</div>
+          <input
+            type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoFocus
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') sendCode(); }}
+            placeholder={tx('auth_email_ph')}
+            style={inputStyle}
+          />
+          <input
+            type="text" autoComplete="nickname" autoCorrect="off" spellCheck={false} maxLength={24}
+            value={playerName}
+            onChange={(e) => { setPlayerName(e.target.value); setError(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') sendCode(); }}
+            placeholder={tx('auth_name_ph')}
+            style={{ ...inputStyle, marginBottom: 6, borderColor: cleanName ? C.green : C.navy }}
+          />
+          {nameSuggestions.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {nameSuggestions.map(n => (
+                <button key={n} type="button" onClick={() => { setPlayerName(n); setError(null); }} style={{
+                  background: C.creamLight, border: `2px solid ${C.navy}`, borderRadius: 999, padding: '5px 12px',
+                  fontFamily: F.body, fontSize: 13, fontWeight: 700, color: C.navy, cursor: 'pointer',
+                }}>{formatDisplayName(n)}</button>
+              ))}
+            </div>
+          )}
+          <div style={{ ...bodyStyle, fontSize: 12, marginBottom: 12 }}>
+            {nameQuery && !cleanName && nameSuggestions.length === 0 ? tx('auth_name_none') : tx('auth_name_hint')}
+          </div>
+          {error && <div style={{ ...bodyStyle, color: C.red, fontWeight: 700, marginBottom: 10 }}>{error}</div>}
+          <Btn onClick={sendCode} disabled={!formOk || busy} style={{ marginBottom: 10, fontSize: 14, padding: '12px 10px' }}>{busy ? tx('auth_sending') : tx('auth_send_code')}</Btn>
+          <button type="button" onClick={onClose} style={linkStyle}>{tx('setup_cancel')}</button>
+        </>
+      ) : (
+        <>
+          <div style={{ ...titleStyle, marginBottom: 10 }}>{tx('auth_code_h')}</div>
+          <div style={bodyStyle}>{tx('auth_code_body', { email: cleanEmail })}</div>
+          <input
+            type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus
+            value={code}
+            onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 8)); setError(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') verifyCode(); }}
+            placeholder="000000"
+            style={{ ...inputStyle, textAlign: 'center', fontFamily: F.display, fontSize: 24, letterSpacing: '6px', height: 54 }}
+          />
+          {error && <div style={{ ...bodyStyle, color: C.red, fontWeight: 700, marginBottom: 10 }}>{error}</div>}
+          <Btn onClick={verifyCode} disabled={code.length < 6 || busy} style={{ marginBottom: 10, fontSize: 14, padding: '12px 10px' }}>{busy ? tx('auth_checking') : tx('auth_confirm')}</Btn>
+          <button type="button" onClick={sendCode} disabled={busy} style={linkStyle}>{tx('auth_resend')}</button>
+          <button type="button" onClick={() => { setStep('email'); setError(null); }} style={linkStyle}>{tx('auth_change_email')}</button>
+        </>
+      )}
+    </Card></Overlay>
+  );
+}
+
 // ═══════ SCREENS ═══════
 
-function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules, lang, setLang, tx }) {
+function HomeScreen({ data, onNewGame, onRankings, onHistory, onPlayers, onRules, lang, setLang, tx, session, onOpenAuth }) {
   const [langOpen, setLangOpen] = useState(false);
   return (
     <PageBg showEric={true} footerLink>
-      <div style={{ textAlign: 'center', padding: '16px 0 28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button type="button" onClick={onOpenAuth} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '70%',
+          background: session ? C.yellow : C.navy, color: session ? C.navy : C.cream,
+          border: `2px solid ${session ? C.navy : C.yellow}`, borderRadius: 999,
+          padding: '5px 12px', fontFamily: F.body, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+        }}>
+          {session ? <ShieldCheck size={14} strokeWidth={2.5} style={{ flexShrink: 0 }} /> : <User size={14} strokeWidth={2.5} style={{ flexShrink: 0 }} />}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session ? authDisplayName(session) : tx('auth_sign_in')}</span>
+        </button>
+      </div>
+      <div style={{ textAlign: 'center', padding: '10px 0 28px' }}>
         <div style={{
           display: 'inline-block', background: C.navy, color: C.cream, padding: '4px 16px',
           borderRadius: 999, fontFamily: F.display, fontSize: 9, letterSpacing: '3px',
@@ -939,7 +1089,7 @@ function TargetPickerOverlay({ onCancel, onConfirm, tx }) {
   );
 }
 
-function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx }) {
+function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlayer, tx, session }) {
   const [name, setName] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
   const [suppressSavedSuggestions, setSuppressSavedSuggestions] = useState(false);
@@ -966,7 +1116,12 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   }, []);
 
   const existing = Object.keys(data.players).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-  const lastGame = data.games.length > 0 ? data.games[0] : null;
+  // "Repetir última partida": solo con sesión, y solo la última partida en la que jugó ese usuario
+  // (su nombre de jugador figura entre los jugadores). Así no se ve la actividad de otros.
+  const myName = foldForMatch(session?.user?.user_metadata?.name?.trim() ?? '');
+  const lastGame = myName
+    ? (data.games.find(g => (g.players ?? []).some(p => foldForMatch(p) === myName)) ?? null)
+    : null;
   const showLastGameReplay = lastGame
     && lastGame.players?.length >= 2
     && selected.length === 0
@@ -1360,7 +1515,7 @@ function SetupScreen({ data, selected, setSelected, onStart, onBack, onSavePlaye
   );
 }
 
-function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer, tx }) {
+function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer, tx, canEdit, onRequireAuth }) {
   const [confirmDeleteSaved, setConfirmDeleteSaved] = useState(null);
   const [actionsFor, setActionsFor] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
@@ -1451,8 +1606,8 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer,
                     }}>{formatDisplayName(p)}</span>
                     <button
                       type="button"
-                      onClick={() => setActionsFor(p)}
-                      aria-label={tx('players_actions_edit')}
+                      onClick={() => (canEdit ? setActionsFor(p) : onRequireAuth())}
+                      aria-label={canEdit ? tx('players_actions_edit') : tx('auth_locked')}
                       style={{
                         flexShrink: 0, border: 'none', borderLeft: `1px solid ${C.navy}18`,
                         background: 'transparent', color: C.navy, opacity: 0.55,
@@ -1460,7 +1615,7 @@ function PlayersScreen({ data, onBack, onDeleteSavedPlayer, onRenameSavedPlayer,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
-                      <MoreVertical size={12} strokeWidth={2.5} />
+                      {canEdit ? <MoreVertical size={12} strokeWidth={2.5} /> : <Lock size={11} strokeWidth={2.5} />}
                     </button>
                   </span>
                 ))}
@@ -3104,7 +3259,7 @@ function RankingsScreen({ data, onBack, tx, lang }) {
   );
 }
 
-function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
+function HistoryScreen({ data, onBack, onDelete, tx, lang, canEdit, onRequireAuth }) {
   const allGames = data.games;
   const [confirmDelete, setConfirmDelete] = useState(null);
   // Borrado en dos pasos; solo el primero tiene 2s de espera antes de habilitar el botón.
@@ -3286,7 +3441,11 @@ function HistoryScreen({ data, onBack, onDelete, tx, lang }) {
             <Card key={g.id} style={{ padding: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={11} /><span style={{ fontSize: 11, fontFamily: F.body, color: C.inkSoft }}>{fmtDate(g.date, lang)}</span></div>
-                <button onClick={() => { setDeleteStep(1); setDeleteCountdown(2); setConfirmDelete(g); }} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
+                {canEdit ? (
+                  <button onClick={() => { setDeleteStep(1); setDeleteCountdown(2); setConfirmDelete(g); }} style={{ background: 'transparent', border: 'none', color: C.red }}><Trash2 size={14} /></button>
+                ) : (
+                  <button onClick={onRequireAuth} aria-label={tx('auth_locked')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, opacity: 0.7 }}><Lock size={14} /></button>
+                )}
               </div>
               {r.map((p, i) => (
                 <div key={p} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1px 0', gap: 6 }}>
@@ -3335,6 +3494,17 @@ export default function App() {
   const [lang, setLang] = useState(() => { try { return localStorage.getItem('flip7_lang') || 'es'; } catch { return 'es'; } });
   const tx = useCallback((key, rep) => Tx(lang, key, rep || {}), [lang]);
   useEffect(() => { try { localStorage.setItem('flip7_lang', lang); } catch (_) {} }, [lang]);
+
+  // Sesión de Supabase Auth: solo con sesión se puede borrar/editar (además lo exige la base con RLS).
+  const [session, setSession] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: d }) => setSession(d?.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    return () => sub?.subscription?.unsubscribe();
+  }, []);
+  const canEdit = !!session;
+  const openAuth = () => setAuthOpen(true);
 
   const [screen, setScreen] = useState('home');
   const [rulesFromGame, setRulesFromGame] = useState(false);
@@ -3484,7 +3654,7 @@ export default function App() {
   };
 
   const deleteGame = async (id) => {
-    await removeGame(id);
+    if (!(await removeGame(id))) return;
     const ng = data.games.filter(g => g.id !== id);
     const stats = recalculateStats(ng);
     const savedNames = await loadSavedPlayerNames();
@@ -3588,11 +3758,11 @@ export default function App() {
         ::-webkit-scrollbar { display: none; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
-      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => { setRulesFromGame(false); setScreen('rules'); }} />}
+      {screen === 'home' && <HomeScreen data={data} lang={lang} setLang={setLang} tx={tx} session={session} onOpenAuth={openAuth} onNewGame={() => { setSelected([]); setScreen('setup'); }} onRankings={() => setScreen('rankings')} onHistory={() => setScreen('history')} onPlayers={() => setScreen('players')} onRules={() => { setRulesFromGame(false); setScreen('rules'); }} />}
       {screen === 'setup' && (
-        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} />
+        <SetupScreen data={data} selected={selected} setSelected={setSelected} onStart={openTargetPicker} onBack={() => setScreen('home')} onSavePlayer={savePlayerName} tx={tx} session={session} />
       )}
-      {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} />}
+      {screen === 'players' && <PlayersScreen data={data} onBack={() => setScreen('home')} onDeleteSavedPlayer={deleteSavedPlayer} onRenameSavedPlayer={renameSavedPlayer} tx={tx} canEdit={canEdit} onRequireAuth={openAuth} />}
       {screen === 'rules' && <RulesScreen onBack={() => setScreen(rulesFromGame ? 'game' : 'home')} fromGame={rulesFromGame} tx={tx} />}
       {targetPickerOpen && (
         <TargetPickerOverlay
@@ -3614,7 +3784,8 @@ export default function App() {
         />
       )}
       {screen === 'rankings' && <RankingsScreen data={data} onBack={() => setScreen('home')} tx={tx} lang={lang} />}
-      {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} />}
+      {screen === 'history' && <HistoryScreen data={data} onBack={() => setScreen('home')} onDelete={deleteGame} tx={tx} lang={lang} canEdit={canEdit} onRequireAuth={openAuth} />}
+      {authOpen && <AuthOverlay session={session} onClose={() => setAuthOpen(false)} tx={tx} playerNames={Object.keys(data.players)} />}
       {deletingPlayer && (
         <Overlay>
           <div style={{ textAlign: 'center', padding: 24, fontFamily: F.display, fontSize: 16, color: C.yellow, letterSpacing: '1.5px' }}>
